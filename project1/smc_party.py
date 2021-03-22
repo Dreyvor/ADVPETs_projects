@@ -17,7 +17,8 @@ from typing import (
 from communication import Communication
 from expression import (
     Expression,
-    Secret
+    Secret, Scalar,
+    AddOp, SubOp, MultOp
 )
 from protocol import ProtocolSpec
 from secret_sharing import(
@@ -69,18 +70,23 @@ class SMCParty:
             self,
             expr: Expression
         ) -> Share:
+        
         # if expr is an addition operation:
-        #     ...
+        if(isinstance(expr,AddOp)):
+            self.process_expression(expr) + self.process_expression(expr)
 
         # if expr is a multiplication operation:
-        #     ...
+        if(isinstance(expr,MultOp)):
+            self.process_expression(expr) * self.process_expression(expr)
 
         # if expr is a secret:
-        #     ...
-
+        if(isinstance(expr,Secret)):
+            raise NotImplementedError("How should we treat secrets ?") 
+            
         # if expr is a scalar:
-        #     ...
-        #
+        if(isinstance(expr,Scalar)):
+            raise NotImplementedError("How should can we eval to obtain the value in Scalar (getter in Expression ??) ?")
+        
         # Call specialized methods for each expression type, and have these specialized
         # methods in turn call `process_expression` on their sub-expressions to process
         # further.

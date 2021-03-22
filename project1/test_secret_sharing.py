@@ -6,5 +6,9 @@ MODIFY THIS FILE.
 """
 
 
+
+
 def test():
-    raise NotImplementedError("You can create some tests.")
+    print("Start tests secret_sharing")
+
+test()

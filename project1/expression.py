@@ -41,10 +41,8 @@ class Expression:
     def __add__(self, other):
         return AddOp(self,other)
 
-
     def __sub__(self, other):
         return SubOp(self,other)
-
 
     def __mul__(self, other):
         return MultOp(self,other)
@@ -115,7 +113,6 @@ class SubOp(Expression):
         
     def __repr__(self):
         return f"({repr(self.a)} - {repr(self.b)})"
-
 
 
 class MultOp(Expression):
