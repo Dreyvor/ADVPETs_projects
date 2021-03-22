@@ -9,4 +9,6 @@ from ttp import TrustedParamGenerator
 
 
 def test():
+    print('test')
     raise NotImplementedError("You can create some tests.")
+    
