@@ -12,7 +12,7 @@ from typing import (
 )
 
 from communication import Communication
-from secret_sharing import(
+from secret_sharing import (
     share_secret,
     Share,
 )
