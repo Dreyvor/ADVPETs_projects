@@ -16,11 +16,11 @@ class Share:
     
     def __init__(self, secret: Secret):
         # Adapt constructor arguments as you wish
-        self.secret = secret 
+        self.secret = secret
         
     def __repr__(self):
         # Helps with debugging.
-        return f"{self.__class__.__name__}({secret self.secret})"
+        return f"{self.__class__.__name__}(secret {self.secret})"
 
     def __add__(self, other):
         raise NotImplementedError("You need to implement this method.")

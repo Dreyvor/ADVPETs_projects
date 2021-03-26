@@ -15,7 +15,10 @@ from communication import Communication
 from secret_sharing import (
     share_secret,
     Share,
+    #q, #TODO: check if we need to import that
 )
+
+import random as rnd
 
 # Feel free to add as many imports as you want.
 
@@ -27,7 +30,7 @@ class TrustedParamGenerator:
 
     def __init__(self):
         self.participant_ids: Set[str] = set()
-
+        self.triplet_dict: Dict[Tuple[str, str], Tuple[Share, Share, Share]] = collections.defaultdict(dict)
 
     def add_participant(self, participant_id: str) -> None:
         """
@@ -39,6 +42,34 @@ class TrustedParamGenerator:
         """
         Retrieve a triplet of shares for a given client_id.
         """
-        raise NotImplementedError("You need to implement this method.")
+        triplet = self.triplet_dict.get((client_id, op_id))
+        if triplet == None:
+            triplet = generate_triplet(client_id, op_id)
+        return triplet
+
+    def generate_triplet(self, client_id: str, op_id: str) -> Tuple[Share, Share, Share]:
+        """
+        Generate a triplet for a given op_id and retrieve the share for the pair (client_id, op_id)
+        """
+        # Generate a triplet
+        a = rnd.randint(0, q)
+        b = rnd.randint(0, q)
+        c = a * b % q
+
+        # Split each value into multiples shares (each clients will have a share of a, b and c)
+        nb_participants = len(self.participant_ids)
+        a_shares : List[Share] = share_secret(a, nb_participants)
+        b_shares : List[Share] = share_secret(b, nb_participants)
+        c_shares : List[Share] = share_secret(c, nb_participants)
+
+        # Store the shares in the ttp's dict
+        for idx, p_id in enumerate(participant_ids):
+            self.triplet_dict[(p_id, op_id)] = (a_shares[idx], b_shares[idx], c_shares[idx])
+
+        res = self.triplet_dict.get((client_id, op_id))
+        # TODO: Delete the following assert when it is tested
+        assert(res != None)
+
+        return res
 
     # Feel free to add as many methods as you want.
