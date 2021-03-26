@@ -9,13 +9,14 @@ from typing import (
     Dict,
     Set,
     Tuple,
+    List,
 )
 
 from communication import Communication
 from secret_sharing import (
     share_secret,
     Share,
-    #q, #TODO: check if we need to import that
+    q, #TODO: check if we need to import that
 )
 
 import random as rnd
@@ -37,15 +38,6 @@ class TrustedParamGenerator:
         Add a participant.
         """
         self.participant_ids.add(participant_id)
-
-    def retrieve_share(self, client_id: str, op_id: str) -> Tuple[Share, Share, Share]:
-        """
-        Retrieve a triplet of shares for a given client_id.
-        """
-        triplet = self.triplet_dict.get((client_id, op_id))
-        if triplet == None:
-            triplet = generate_triplet(client_id, op_id)
-        return triplet
 
     def generate_triplet(self, client_id: str, op_id: str) -> Tuple[Share, Share, Share]:
         """
@@ -71,5 +63,14 @@ class TrustedParamGenerator:
         assert(res != None)
 
         return res
+
+    def retrieve_share(self, client_id: str, op_id: str) -> Tuple[Share, Share, Share]:
+        """
+        Retrieve a triplet of shares for a given client_id.
+        """
+        triplet = self.triplet_dict.get((client_id, op_id))
+        if triplet == None:
+            triplet = generate_triplet(client_id, op_id)
+        return triplet
 
     # Feel free to add as many methods as you want.
