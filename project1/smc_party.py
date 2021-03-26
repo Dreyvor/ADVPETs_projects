@@ -116,16 +116,14 @@ class SMCParty:
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
-            if(self.private_shares.get(expr) != None): #if the secret is its own
-                #sec = self.value_dict.get(expr)
-                sec = self.private_shares.get(expr).value
-                assert(sec != None) # TODO: delete this
+            sec = self.private_shares.get(expr)
+            if(sec != None): #if the secret is its own
                 return Share(sec) # return the value of the secret in a Share
             else:
                 # get the share sent to you corresponding to the secret
-                ret = self.comm.retrieve_private_message(str(expr.getId()))
-                assert(ret != None) # TODO: delete this
-                return Share(int(ret))
+                sec = self.comm.retrieve_private_message(str(expr.getId()))
+                assert(sec != None) # TODO: delete this
+                return Share(int(sec))
             
         # if expr is a scalar:
         if(isinstance(expr,Scalar)):
