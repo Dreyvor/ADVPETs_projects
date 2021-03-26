@@ -22,17 +22,14 @@ class Share:
         return f"{self.__class__.__name__}(value {self.value})"
 
     def __add__(self, other):
-        return self.value + other.getValue()
+        return self.value + other.value
 
     def __sub__(self, other):
-        return self.value - other.getValue()
+        return self.value - other.value
 
     def __mul__(self, other):
-        return self.value * other.getValue()
-        
-    def getValue(self):
-        return self.value
-        
+        return self.value * other.value
+
 
 def share_secret(secret: int, num_shares: int) -> List[Share]: ############################ NOT TESTED YET
     """Generate secret shares."""

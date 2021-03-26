@@ -91,7 +91,7 @@ class SMCParty:
             part_res = Share(self.comm.retrieve_public_message(participant_id,labelFinal)) # retrieve
             res += part_res # combine
         
-        return res.getValue()
+        return res.value
 
     # Suggestion: To process expressions, make use of the *visitor pattern* like so:
     def process_expression(
@@ -105,7 +105,7 @@ class SMCParty:
 
         # if expr is a multiplication operation:
         if(isinstance(expr,MultOp)):
-            self.process_expression(expr) * self.process_expression(expr)
+            raise NotImplementedError("AAA") 
 
         # if expr is a secret:
         if(isinstance(expr,Secret)):
