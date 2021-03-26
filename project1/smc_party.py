@@ -118,7 +118,7 @@ class SMCParty:
         if(isinstance(expr, Secret)):
             sec = self.private_shares.get(expr)
             if(sec != None): #if the secret is its own
-                return Share(sec) # return the value of the secret in a Share
+                return Share(sec.value) # return the value of the secret in a Share
             else:
                 # get the share sent to you corresponding to the secret
                 sec = self.comm.retrieve_private_message(str(expr.getId()))
