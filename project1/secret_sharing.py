@@ -19,7 +19,7 @@ class Share:
         
     def __repr__(self):
         # Helps with debugging.
-        return f"{self.__class__.__name__}(value {self.value})"
+        return f"{self.__class__.__name__}({self.value})"
 
     def __add__(self, other):
         return self.value + other.value

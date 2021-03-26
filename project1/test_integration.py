@@ -79,6 +79,7 @@ def test_suite1():
     """
     f(a, b, c) = a + b + c
     """
+    print('start test suite 1')
     alice_secret = Secret()
     bob_secret = Secret()
     charlie_secret = Secret()
@@ -239,3 +240,5 @@ def test_suite8():
     )
     expected = (((3 + 8) + (14 * 9) - 2) * (5 + 7))
     suite(parties, expr, expected)
+    
+test_suite1()

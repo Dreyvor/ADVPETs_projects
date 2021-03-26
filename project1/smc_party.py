@@ -58,24 +58,22 @@ class SMCParty:
         self.client_id = client_id
         self.protocol_spec = protocol_spec
         self.value_dict = value_dict
-        self.private_shares = List[Share]
+        self.private_shares: Dict[Secret,List[Share]] = dict()
 
     def run(self) -> int:
         """
         The method the client use to do the SMC.
         """
         # Generate share
-        shares_per_secret = Dict[Secret,List[Share]]
-        
         num_shares = len(self.protocol_spec.participant_ids)
-        for (secret,val) in self.value_dict:
-            lShares = share_secret(val,num_shares) # generate shares
-            shares_per_secret[secret] = lShares
+        for (secret,val) in self.value_dict.items():
+            lShares = list(share_secret(val,num_shares)) # generate shares
+            self.private_shares[secret] = lShares
         
             # Send shares as private msg
             idx = 0
             for participant_id in self.protocol_spec.participant_ids:
-                self.comm.send_private_message(participant_id, secret.getId(), str(shares_per_secret[secret][idx]))
+                self.comm.send_private_message(participant_id, str(secret.getId()), str(self.private_shares[secret][idx].value))
                 idx = idx + 1
         
         # Process expression
@@ -83,7 +81,7 @@ class SMCParty:
             
         # Share, publish_msg
         labelFinal = 'computed_shares'
-        self.comm.publish_message(labelFinal,str(res_process))
+        self.comm.publish_message(labelFinal,str(res_process.value))
         
         # Retrieve and combine for final result
         res = Share(0)
@@ -101,7 +99,11 @@ class SMCParty:
         
         # if expr is an addition operation:
         if(isinstance(expr,AddOp)):
-            self.process_expression(expr) + self.process_expression(expr)
+            self.process_expression(expr.a) + self.process_expression(expr.b)
+        
+        # if expr is a substraction operation:
+        if(isinstance(expr,SubOp)):
+            self.process_expression(expr.a) - self.process_expression(expr.b)
 
         # if expr is a multiplication operation:
         if(isinstance(expr,MultOp)):
@@ -109,11 +111,24 @@ class SMCParty:
 
         # if expr is a secret:
         if(isinstance(expr,Secret)):
-            raise NotImplementedError("How should we treat secrets ?") 
+            if(self.private_shares.get(expr) != None): #if the secret is its own
+                sec = self.value_dict.get(expr)
+                assert(sec != None)
+                return Share(sec) # return the value of the secret in a Share
+            else:
+                # get the share sent to you corresponding to the secret
+                ret = self.comm.retrieve_private_message(str(expr.id))
+                assert(ret != None)
+                print("RETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT : ", ret)
+                return Share(int(ret))
             
         # if expr is a scalar:
         if(isinstance(expr,Scalar)):
-            raise NotImplementedError("How should can we eval to obtain the value in Scalar (getter in Expression ??) ?")
+            # only the first participant adds the Scalar
+            if(self.client_id == self.protocol_spec.participant_ids[0]):
+                return Share(expr.value)
+            else:
+                return Share(0)
         
         # Call specialized methods for each expression type, and have these specialized
         # methods in turn call `process_expression` on their sub-expressions to process
