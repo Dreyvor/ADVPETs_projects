@@ -5,7 +5,7 @@ Secret sharing scheme.
 from typing import List
 import numpy as np
 
-from expression import Secret
+#from expression import Secret
 
 q = 2^64 # global variable q
 
@@ -14,22 +14,24 @@ class Share:
     A secret share in a finite field.
     """
     
-    def __init__(self, secret: Secret):
-        # Adapt constructor arguments as you wish
-        self.secret = secret 
+    def __init__(self, value: int):
+        self.value = value 
         
     def __repr__(self):
         # Helps with debugging.
-        return f"{self.__class__.__name__}({secret self.secret})"
+        return f"{self.__class__.__name__}(value {self.value})"
 
     def __add__(self, other):
-        raise NotImplementedError("You need to implement this method.")
+        return self.value + other.getValue()
 
     def __sub__(self, other):
-        raise NotImplementedError("You need to implement this method.")
+        return self.value - other.getValue()
 
     def __mul__(self, other):
-        raise NotImplementedError("You need to implement this method.")
+        return self.value * other.getValue()
+        
+    def getValue(self):
+        return self.value
         
 
 def share_secret(secret: int, num_shares: int) -> List[Share]: ############################ NOT TESTED YET

@@ -13,7 +13,7 @@ from typing import (
     Tuple,
     Union
 )
-
+from expression import Secret
 from communication import Communication
 from expression import (
     Expression,
@@ -26,6 +26,8 @@ from secret_sharing import(
     share_secret,
     Share,
 )
+import numpy as np
+from typing import List
 
 # Feel free to add as many imports as you want.
 
@@ -56,14 +58,40 @@ class SMCParty:
         self.client_id = client_id
         self.protocol_spec = protocol_spec
         self.value_dict = value_dict
-
+        self.private_shares = List[Share]
 
     def run(self) -> int:
         """
         The method the client use to do the SMC.
         """
-        raise NotImplementedError("You need to implement this method.")
-
+        # Generate share
+        shares_per_secret = Dict[Secret,List[Share]]
+        
+        num_shares = len(self.protocol_spec.participant_ids)
+        for (secret,val) in self.value_dict:
+            lShares = share_secret(val,num_shares) # generate shares
+            shares_per_secret[secret] = lShares
+        
+            # Send shares as private msg
+            idx = 0
+            for participant_id in self.protocol_spec.participant_ids:
+                self.comm.send_private_message(participant_id, secret.getId(), str(shares_per_secret[secret][idx]))
+                idx = idx + 1
+        
+        # Process expression
+        res_process = self.process_expression(self.protocol_spec.expr)
+            
+        # Share, publish_msg
+        labelFinal = 'computed_shares'
+        self.comm.publish_message(labelFinal,str(res_process))
+        
+        # Retrieve and combine for final result
+        res = Share(0)
+        for participant_id in self.protocol_spec.participant_ids:
+            part_res = Share(self.comm.retrieve_public_message(participant_id,labelFinal)) # retrieve
+            res += part_res # combine
+        
+        return res.getValue()
 
     # Suggestion: To process expressions, make use of the *visitor pattern* like so:
     def process_expression(

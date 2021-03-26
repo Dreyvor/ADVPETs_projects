@@ -92,6 +92,8 @@ class Secret(Expression):
             f"{self.__class__.__name__}({self.value if self.value is not None else ''})"
         )
 
+    def getId(self):
+        return self.id
 
     # Feel free to add as many methods as you like.
 
