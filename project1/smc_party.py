@@ -29,6 +29,8 @@ from secret_sharing import(
 import numpy as np
 from typing import List
 
+from ttp import TrustedParamGenerator
+
 # Feel free to add as many imports as you want.
 
 
@@ -101,18 +103,35 @@ class SMCParty:
         ) -> Share:
         
         # if expr is an addition operation:
-        if(isinstance(expr,AddOp)):
+        if(isinstance(expr, AddOp)):
             return self.process_expression(expr.a) + self.process_expression(expr.b)
         
         # if expr is a substraction operation:
-        if(isinstance(expr,SubOp)):
+        if(isinstance(expr, SubOp)):
             return self.process_expression(expr.a) - self.process_expression(expr.b)
 
         # if expr is a multiplication operation:
-        if(isinstance(expr,MultOp)):
-            if(isinstance(expr.a,Scalar) and isinstance(expr.b,Scalar)):
+        #TODO: Check/test the mult part
+        if(isinstance(expr, MultOp)):
+            print("#"*30,type(expr.a), type(expr.b))
+            #TODO: modifier les checks de types, car ils sont faux (see test_suite3)
+            if(isinstance(expr.a, Scalar) and isinstance(expr.b, Scalar)):
                 return self.process_expression(expr.a) * self.process_expression(expr.b)
-            
+            elif(isinstance(expr.a, Secret) and isinstance(expr.b, Scalar)):
+                print("#"*30, expr.b)
+                return self.process_expression(expr.a) * expr.b.value
+            elif(isinstance(expr.a, Scalar) and isinstance(expr.b, Secret)):
+                print("#"*30, expr.a)
+                return self.process_expression(expr.b) * expr.a.value
+            else: # Both are Secret ==> use triplets beavers
+                # TODO: check if we only have to retrieve the ttp from the server
+                print("#"*30, "HELLO")
+                my_ttp = TrustedParamGenerator()
+                #Generate/retreive triplets
+
+
+
+                
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
