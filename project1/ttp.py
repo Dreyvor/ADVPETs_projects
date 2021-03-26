@@ -16,7 +16,7 @@ from communication import Communication
 from secret_sharing import (
     share_secret,
     Share,
-    q, #TODO: check if we need to import that
+    q, 
 )
 
 import random as rnd
@@ -55,7 +55,7 @@ class TrustedParamGenerator:
         c_shares : List[Share] = share_secret(c, nb_participants)
 
         # Store the shares in the ttp's dict
-        for idx, p_id in enumerate(participant_ids):
+        for idx, p_id in enumerate(self.participant_ids):
             self.triplet_dict[(p_id, op_id)] = (a_shares[idx], b_shares[idx], c_shares[idx])
 
         res = self.triplet_dict.get((client_id, op_id))
@@ -70,7 +70,7 @@ class TrustedParamGenerator:
         """
         triplet = self.triplet_dict.get((client_id, op_id))
         if triplet == None:
-            triplet = generate_triplet(client_id, op_id)
+            triplet = self.generate_triplet(client_id, op_id)
         return triplet
 
     # Feel free to add as many methods as you want.
