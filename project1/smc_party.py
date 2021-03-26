@@ -68,7 +68,6 @@ class SMCParty:
         num_shares = len(self.protocol_spec.participant_ids)
         for (secret,val) in self.value_dict.items():
             lShares = list(share_secret(val, num_shares)) # generate shares
-            print("%"*20, val,";", lShares)
             self.private_shares[secret] = lShares[0]
         
             # Send shares as private msg
@@ -90,10 +89,8 @@ class SMCParty:
             # retrieve
             part_res = Share(int(self.comm.retrieve_public_message(participant_id, labelFinal)))
             parts_to_combine.append(part_res)
-            print("-"*20, f"client: {self.client_id}, p_id: {participant_id}, part_res:{part_res}") #TODO: delete this
         # combine
         res = reconstruct_secret(parts_to_combine)
-        print("#"*20, f"res of {self.client_id}", res)
 
         return res
 
@@ -116,15 +113,16 @@ class SMCParty:
             raise NotImplementedError("AAA")
 
         # if expr is a secret:
-        if(isinstance(expr,Secret)):
+        if(isinstance(expr, Secret)):
             if(self.private_shares.get(expr) != None): #if the secret is its own
-                sec = self.value_dict.get(expr)
-                assert(sec != None)
+                #sec = self.value_dict.get(expr)
+                sec = self.private_shares.get(expr).value
+                assert(sec != None) # TODO: delete this
                 return Share(sec) # return the value of the secret in a Share
             else:
                 # get the share sent to you corresponding to the secret
-                ret = self.comm.retrieve_private_message(str(expr.id))
-                assert(ret != None)
+                ret = self.comm.retrieve_private_message(str(expr.getId()))
+                assert(ret != None) # TODO: delete this
                 return Share(int(ret))
             
         # if expr is a scalar:
