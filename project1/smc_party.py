@@ -110,7 +110,9 @@ class SMCParty:
 
         # if expr is a multiplication operation:
         if(isinstance(expr,MultOp)):
-            raise NotImplementedError("AAA")
+            if(isinstance(expr.a,Scalar) and isinstance(expr.b,Scalar)):
+                return self.process_expression(expr.a) * self.process_expression(expr.b)
+            
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):

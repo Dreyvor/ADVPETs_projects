@@ -243,4 +243,32 @@ def test_suite8():
     expected = (((3 + 8) + (14 * 9) - 2) * (5 + 7))
     suite(parties, expr, expected)
 
-test_suite2()
+def test_main():
+    print("start test_suite1 : ")
+    test_suite1()
+    print("end test_suite1 : ")
+    print("start test_suite2 : ")
+    test_suite2()
+    print("end test_suite2 : ")
+    print("start test_suite3 : ")
+    #test_suite3()
+    print("end test_suite3 : ")
+    print("start test_suite4 : ")
+    test_suite4()
+    print("end test_suite4 : ")
+    print("start test_suite5 : ")
+    #test_suite5()
+    print("end test_suite5 : ")
+    print("start test_suite6 : ")
+    test_suite6()
+    print("end test_suite6 : ")
+    print("start test_suite7 : ")
+    #test_suite7()
+    print("end test_suite7 : ")
+    print("start test_suite8 : ")
+    #test_suite8()
+    print("YAHOU!")
+    
+test_main()
+    
+    
