@@ -58,7 +58,7 @@ class SMCParty:
         self.client_id = client_id
         self.protocol_spec = protocol_spec
         self.value_dict = value_dict
-        self.private_shares: Dict[Secret,List[Share]] = dict()
+        self.private_shares: Dict[Secret, Share] = dict()
 
     def run(self) -> int:
         """
@@ -67,13 +67,14 @@ class SMCParty:
         # Generate share
         num_shares = len(self.protocol_spec.participant_ids)
         for (secret,val) in self.value_dict.items():
-            lShares = list(share_secret(val,num_shares)) # generate shares
-            self.private_shares[secret] = lShares
+            lShares = list(share_secret(val, num_shares)) # generate shares
+            print("%"*20, val,";", lShares)
+            self.private_shares[secret] = lShares[0]
         
             # Send shares as private msg
-            idx = 0
-            for participant_id in self.protocol_spec.participant_ids:
-                self.comm.send_private_message(participant_id, str(secret.getId()), str(self.private_shares[secret][idx].value))
+            idx = 1
+            for participant_id in [p_id for p_id in self.protocol_spec.participant_ids if p_id != self.client_id]:
+                self.comm.send_private_message(participant_id, str(secret.getId()), str(lShares[idx].value))
                 idx = idx + 1
         
         # Process expression
@@ -81,15 +82,20 @@ class SMCParty:
             
         # Share, publish_msg
         labelFinal = 'computed_shares'
-        self.comm.publish_message(labelFinal,str(res_process.value))
+        self.comm.publish_message(labelFinal, str(res_process.value))
         
         # Retrieve and combine for final result
-        res = Share(0)
+        parts_to_combine = []
         for participant_id in self.protocol_spec.participant_ids:
-            part_res = Share(self.comm.retrieve_public_message(participant_id,labelFinal)) # retrieve
-            res += part_res # combine
-        
-        return res.value
+            # retrieve
+            part_res = Share(int(self.comm.retrieve_public_message(participant_id, labelFinal)))
+            parts_to_combine.append(part_res)
+            print("-"*20, f"client: {self.client_id}, p_id: {participant_id}, part_res:{part_res}") #TODO: delete this
+        # combine
+        res = reconstruct_secret(parts_to_combine)
+        print("#"*20, f"res of {self.client_id}", res)
+
+        return res
 
     # Suggestion: To process expressions, make use of the *visitor pattern* like so:
     def process_expression(
@@ -99,15 +105,15 @@ class SMCParty:
         
         # if expr is an addition operation:
         if(isinstance(expr,AddOp)):
-            self.process_expression(expr.a) + self.process_expression(expr.b)
+            return self.process_expression(expr.a) + self.process_expression(expr.b)
         
         # if expr is a substraction operation:
         if(isinstance(expr,SubOp)):
-            self.process_expression(expr.a) - self.process_expression(expr.b)
+            return self.process_expression(expr.a) - self.process_expression(expr.b)
 
         # if expr is a multiplication operation:
         if(isinstance(expr,MultOp)):
-            raise NotImplementedError("AAA") 
+            raise NotImplementedError("AAA")
 
         # if expr is a secret:
         if(isinstance(expr,Secret)):
@@ -119,7 +125,6 @@ class SMCParty:
                 # get the share sent to you corresponding to the secret
                 ret = self.comm.retrieve_private_message(str(expr.id))
                 assert(ret != None)
-                print("RETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT : ", ret)
                 return Share(int(ret))
             
         # if expr is a scalar:

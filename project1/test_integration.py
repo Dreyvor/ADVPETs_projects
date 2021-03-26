@@ -71,6 +71,8 @@ def suite(parties, expr, expected):
 
     results = run_processes(participants, *clients)
 
+    print("expected:\t", expected)
+    print("results:\t", results)
     for result in results:
         assert result == expected
 

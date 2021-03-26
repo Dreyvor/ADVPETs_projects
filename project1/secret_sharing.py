@@ -7,7 +7,8 @@ import numpy as np
 
 #from expression import Secret
 
-q = 2^64 # global variable q
+#TODO: Modify this power for 64
+q = 2**7 # global variable q
 
 class Share:
     """
@@ -22,28 +23,31 @@ class Share:
         return f"{self.__class__.__name__}({self.value})"
 
     def __add__(self, other):
-        return self.value + other.value
+        return Share(self.value + other.value)
 
     def __sub__(self, other):
-        return self.value - other.value
+        return Share(self.value - other.value)
 
     def __mul__(self, other):
-        return self.value * other.value
+        return Share(self.value * other.value)
 
 
 def share_secret(secret: int, num_shares: int) -> List[Share]: ############################ NOT TESTED YET
     """Generate secret shares."""
+    np.random.seed()
     s = np.random.randint(0, high=q, size=num_shares)
-    s[0] = secret - np.sum(s) + s[0] % q
+    s[0] = (secret - np.sum(s) + s[0]) % q
     
-    lShare = [Share(s_i) for s_i in s] 
+    lShare = [Share(s_i) for s_i in s]
     return lShare
     
 
 def reconstruct_secret(shares: List[Share]) -> int: ############################ NOT TESTED YET
     """Reconstruct the secret from shares."""
-    
-    return np.sum(shares) % q #not sure that numpy utilizes the redefinition of + (__add__) of Share
+    res = Share(0)
+    for s in shares:
+        res += s
+    return res.value % q
     
 
 
