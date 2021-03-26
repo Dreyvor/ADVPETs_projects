@@ -37,7 +37,7 @@ class Share:
 def share_secret(secret: int, num_shares: int) -> List[Share]: ############################ NOT TESTED YET
     """Generate secret shares."""
     s = np.random.randint(0, high=q, size=num_shares)
-    s[0] = secret - np.sum(s) + s[0]
+    s[0] = secret - np.sum(s) + s[0] % q
     
     lShare = [Share(s_i) for s_i in s] 
     return lShare

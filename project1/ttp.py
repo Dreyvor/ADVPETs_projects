@@ -12,7 +12,6 @@ from typing import (
     List,
 )
 
-from communication import Communication
 from secret_sharing import (
     share_secret,
     Share,
