@@ -177,7 +177,6 @@ class SMCParty:
 
         # messages label for public msg will be: "self.client_id + op_id + _x_min_a"
         op_id = str(expr.getId())
-        print("#"*30, op_id)
         a, b, c = self.comm.retrieve_beaver_triplet_shares(op_id)
         a = int(a)
         b = int(b)
@@ -185,7 +184,6 @@ class SMCParty:
 
         # Compute x-a and y-b and send shares to others publicly
         # TODO: check if the shares should be public or private
-        print("#"*60, "HELO THERE")
         x_min_a_share = x - Share(a)
         y_min_b_share = y - Share(b)
 

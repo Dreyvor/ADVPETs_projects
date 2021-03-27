@@ -8,7 +8,7 @@ import numpy as np
 #from expression import Secret
 
 #TODO: Modify this power for 64
-q = 2**7 # global variable q
+q = 2**12 # global variable q
 
 class Share:
     """
