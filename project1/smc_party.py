@@ -115,7 +115,10 @@ class SMCParty:
         #TODO: Check/test the mult part
         if(isinstance(expr, MultOp)):
             # We use triplets beavers only if there is a secret in each operand.
-            if self.has_secret(expr.a) and self.has_secret(expr.b):
+            expr_a_has_secret = self.has_secret(expr.a)
+            expr_b_has_secret = self.has_secret(expr.b)
+
+            if expr_a_has_secret and expr_b_has_secret:
                 x = self.process_expression(expr.a, True)
                 y = self.process_expression(expr.b, True)
 
@@ -128,7 +131,8 @@ class SMCParty:
                     return c + x * y_min_b + y * x_min_a
             
             else:
-                return self.process_expression(expr.a, True) * self.process_expression(expr.b, True)
+                new_curr_in_mult = curr_in_mult or expr_a_has_secret or expr_b_has_secret
+                return self.process_expression(expr.a, new_curr_in_mult) * self.process_expression(expr.b, new_curr_in_mult)
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
