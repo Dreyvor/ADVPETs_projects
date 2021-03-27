@@ -179,6 +179,9 @@ class SMCParty:
         op_id = str(expr.getId())
         print("#"*30, op_id)
         a, b, c = self.comm.retrieve_beaver_triplet_shares(op_id)
+        a = int(a)
+        b = int(b)
+        c = int(c)
 
         # Compute x-a and y-b and send shares to others publicly
         # TODO: check if the shares should be public or private
@@ -207,5 +210,5 @@ class SMCParty:
             rebuilt_x_min_a_share += Share(int(other_x))
             rebuilt_y_min_b_share += Share(int(other_y))
 
-        return rebuilt_x_min_a_share, rebuilt_y_min_b_share, c
+        return rebuilt_x_min_a_share, rebuilt_y_min_b_share, Share(c)
 
