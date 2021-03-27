@@ -115,14 +115,13 @@ class SMCParty:
         #TODO: Check/test the mult part
         if(isinstance(expr, MultOp)):
             # We use triplets beavers only if there is a secret in each operand.
-            # Let's check that
-            if self.contains_secret(expr.a) and self.contains_secret(expr.b):
+            if self.has_secret(expr.a) and self.has_secret(expr.b):
                 x = self.process_expression(expr.a, True)
                 y = self.process_expression(expr.b, True)
 
-                x_min_a, y_min_b, c = self.gen_beavers_shares(x, y, expr)
+                x_min_a, y_min_b, c = self.generate_beavers_shares(x, y, expr)
 
-                # Only add the constant once in the computation
+                # Only add the constant once in the computation (here the first participant)
                 if self.client_id == self.protocol_spec.participant_ids[0]:
                     return c + x * y_min_b + y * x_min_a - x_min_a * y_min_b
                 else:
@@ -145,7 +144,7 @@ class SMCParty:
         # if expr is a scalar:
         if(isinstance(expr,Scalar)):
             # only the first participant adds the Scalar
-            if(self.client_id == self.protocol_spec.participant_ids[0]) or curr_in_mult:
+            if (self.client_id == self.protocol_spec.participant_ids[0]) or curr_in_mult:
                 return Share(expr.value)
             else:
                 return Share(0)
@@ -156,19 +155,19 @@ class SMCParty:
         pass
 
     # Recursive search checking if an expr contains a secret
-    def contains_secret(
+    def has_secret(
             self,
             expr : Expression
         ):
-        if isinstance(expr, Secret):
-            return True
-        elif isinstance(expr, Scalar):
+        if isinstance(expr, Scalar):
             return False
-        else:
-            return self.contains_secret(expr.a) or self.contains_secret(expr.b)
+        elif isinstance(expr, Secret):
+            return True
+        
+        return self.has_secret(expr.a) or self.has_secret(expr.b)
 
     # Generate x-a, y-b and c using beavers
-    def gen_beavers_shares(
+    def generate_beavers_shares(
             self, 
             x : Share, 
             y : Share, 
@@ -182,31 +181,31 @@ class SMCParty:
         b = int(b)
         c = int(c)
 
-        # Compute x-a and y-b and send shares to others publicly
+        # Compute x-a and y-b
         # TODO: check if the shares should be public or private
         x_min_a_share = x - Share(a)
         y_min_b_share = y - Share(b)
-
+        
+        # Broadcast shares
         self.comm.publish_message(self.client_id + op_id + "_x_min_a", str(x_min_a_share.value))
         self.comm.publish_message(self.client_id + op_id + "_y_min_b", str(y_min_b_share.value))
 
-        rebuilt_x_min_a_share = x_min_a_share
-        rebuilt_y_min_b_share = y_min_b_share
+        # Reconstruct x-a and y-b
+        rebuilt_x_min_a_share = Share(0)
+        rebuilt_y_min_b_share = Share(0)
+        for p_id in self.protocol_spec.participant_ids:#[p_id for p_id in self.protocol_spec.participant_ids if p_id != self.client_id]:
+            x_other = None
+            y_other = None
 
-        # Reconstruct x-a and y-b with the shares of others
-        for p_id in [p_id for p_id in self.protocol_spec.participant_ids if p_id != self.client_id]:
-            other_x = None
-            other_y = None
-
-            # Wait on others to upload their shares
-            while(other_x is None):
-                other_x = self.comm.retrieve_public_message(p_id, p_id + op_id + "_x_min_a")
+            # Can be None if the other has not broadcast his/her share yet
+            while(x_other is None):
+                x_other = self.comm.retrieve_public_message(p_id, p_id + op_id + "_x_min_a")
             
-            while(other_y is None):
-                other_y = self.comm.retrieve_public_message(p_id, p_id + op_id + "_y_min_b")
+            while(y_other is None):
+                y_other = self.comm.retrieve_public_message(p_id, p_id + op_id + "_y_min_b")
 
-            rebuilt_x_min_a_share += Share(int(other_x))
-            rebuilt_y_min_b_share += Share(int(other_y))
+            rebuilt_x_min_a_share += Share(int(x_other))
+            rebuilt_y_min_b_share += Share(int(y_other))
 
         return rebuilt_x_min_a_share, rebuilt_y_min_b_share, Share(c)
 
