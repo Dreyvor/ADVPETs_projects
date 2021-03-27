@@ -99,7 +99,8 @@ class SMCParty:
     # Suggestion: To process expressions, make use of the *visitor pattern* like so:
     def process_expression(
             self,
-            expr: Expression
+            expr: Expression,
+            curr_in_mult=False # Check if we are currently in a mult
         ) -> Share:
         
         # if expr is an addition operation:
@@ -116,8 +117,8 @@ class SMCParty:
             # We use triplets beavers only if there is a secret in each operand.
             # Let's check that
             if self.contains_secret(expr.a) and self.contains_secret(expr.b):
-                x = self.process_expression(expr.a)
-                y = self.process_expression(expr.b)
+                x = self.process_expression(expr.a, True)
+                y = self.process_expression(expr.b, True)
 
                 x_min_a, y_min_b, c = self.gen_beavers_shares(x, y, expr)
 
@@ -128,11 +129,15 @@ class SMCParty:
                     return c + x * y_min_b + y * x_min_a
             
             else:
-                return self.process_expression(expr.a) * self.process_expression(expr.b)
+                print("X"*30, "mult but not two secrets")
+                t1 = self.process_expression(expr.a, True)
+                t2 = self.process_expression(expr.b, True)
+                print("X"*30, t1, "mult", t2)
+                return t1 * t2
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
-            sec = self.private_shares.get(expr) #TODO: work with ID instead of directly expr
+            sec = self.private_shares.get(expr) #TODO: work with expr.getId instead of expr ?
             if(sec != None): #if the secret is its own
                 return Share(sec.value) # return the value of the secret in a Share
             else:
@@ -144,8 +149,7 @@ class SMCParty:
         # if expr is a scalar:
         if(isinstance(expr,Scalar)):
             # only the first participant adds the Scalar
-            #TODO: check that part
-            if(self.client_id == self.protocol_spec.participant_ids[0]):
+            if(self.client_id == self.protocol_spec.participant_ids[0]) or curr_in_mult:
                 return Share(expr.value)
             else:
                 return Share(0)
