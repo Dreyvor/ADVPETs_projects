@@ -1,0 +1,102 @@
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 11 items
+
+test_expression.py .......F...                                           [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_mul_many_secret _____________________________
+
+    def test_mul_many_secret():
+        a = Secret(1)
+        b = Secret(2)
+        c = Secret(3)
+        expr = a*b*c*(a*b*b)
+>       assert repr(expr) == "Secret(1) * Secret(2) * Secret(3) * (Secret(1) * Secret(2) * Secret(2))"
+E       AssertionError: assert 'Secret(1) * ...) * Secret(2)' == 'Secret(1) * ... * Secret(2))'
+E         - Secret(1) * Secret(2) * Secret(3) * (Secret(1) * Secret(2) * Secret(2))
+E         ?                                     -                                 -
+E         + Secret(1) * Secret(2) * Secret(3) * Secret(1) * Secret(2) * Secret(2)
+
+test_expression.py:58: AssertionError
+=========================== short test summary info ============================
+FAILED test_expression.py::test_mul_many_secret - AssertionError: assert 'Sec...
+========================= 1 failed, 10 passed in 0.02s =========================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 5 items
+
+test_expression_TMP.py ...F.                                             [100%]
+
+=================================== FAILURES ===================================
+____________________________________ test3 _____________________________________
+
+    def test3():
+        a = Secret(3)
+        b = Secret(14)
+        c = Secret(2)
+        expr = ((a + b + c) * Scalar(5))
+        print(repr(expr))
+>       assert repr(expr) == "((Secret(3) + Secret(14) + Secret(2)) * Scalar(5))"
+E       AssertionError: assert '((Secret(3) ...) * Scalar(5)' == '((Secret(3) ... * Scalar(5))'
+E         - ((Secret(3) + Secret(14) + Secret(2)) * Scalar(5))
+E         ?                                                  -
+E         + ((Secret(3) + Secret(14)) + Secret(2)) * Scalar(5)
+E         ?                         +
+
+test_expression_TMP.py:41: AssertionError
+----------------------------- Captured stdout call -----------------------------
+((Secret(3) + Secret(14)) + Secret(2)) * Scalar(5)
+=========================== short test summary info ============================
+FAILED test_expression_TMP.py::test3 - AssertionError: assert '((Secret(3) .....
+========================= 1 failed, 4 passed in 0.01s ==========================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 9 items
+
+test_integration.py .........                                            [100%]
+
+============================== 9 passed in 45.80s ==============================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 17 items
+
+test_integration_TMP.py .................                                [100%]
+
+======================== 17 passed in 87.30s (0:01:27) =========================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 1 item
+
+test_secret_sharing.py .                                                 [100%]
+
+============================== 1 passed in 0.00s ===============================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 1 item
+
+test_secret_sharing_TMP.py .                                             [100%]
+
+============================== 1 passed in 0.06s ===============================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 1 item
+
+test_ttp.py .                                                            [100%]
+
+============================== 1 passed in 0.06s ===============================
+============================= test session starts ==============================
+platform linux -- Python 3.8.5, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
+rootdir: /home/brad/Documents/EPFL/SYSCOM/MA03/AdvPETs/ADVPETs_projects/project1
+collected 1 item
+
+test_ttp_TMP.py .                                                        [100%]
+
+============================== 1 passed in 0.07s ===============================
