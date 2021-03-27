@@ -111,7 +111,7 @@ def test_suite2():
     }
 
     expr = (alice_secret - bob_secret)
-    expected = 14 -3
+    expected = 14 - 3
     suite(parties, expr, expected)
 
 
@@ -243,6 +243,24 @@ def test_suite8():
     expected = (((3 + 8) + (14 * 9) - 2) * (5 + 7))
     suite(parties, expr, expected)
 
+def test_suite9():
+    """
+    f(a, b, c) = (a ∗ b) + (b ∗ c) + (c ∗ a)
+    """
+    alice_secret = Secret()
+    bob_secret = Secret()
+
+    parties = {
+        "Alice": {alice_secret: 3},
+        "Bob": {bob_secret: 14},
+    }
+
+    expr = (
+        (alice_secret * bob_secret)
+    )
+    expected = 3 * 14
+    suite(parties, expr, expected)
+
 def test_main():
     # print("start test_suite1 : ")
     # test_suite1()
@@ -268,13 +286,16 @@ def test_main():
     # test_suite6()
     # print("end test_suite6 : ")
     # print("#"*80)
-    print("start test_suite7 : ")
-    test_suite7()
-    print("end test_suite7 : ")
+    # print("start test_suite7 : ")
+    # test_suite7()
+    # print("end test_suite7 : ")
     # print("#"*80)
     # print("start test_suite8 : ")
     # test_suite8()
-    # print("YAHOU!")
+    #print("#"*80)
+    print("start test_suite9 : ")
+    test_suite9()
+    print("YAHOU!")
     
 test_main()
     

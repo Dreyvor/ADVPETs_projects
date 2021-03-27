@@ -16,7 +16,7 @@ class Share:
     """
     
     def __init__(self, value: int):
-        self.value = value 
+        self.value = value
         
     def __repr__(self):
         # Helps with debugging.

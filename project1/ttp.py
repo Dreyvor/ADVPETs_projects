@@ -70,6 +70,7 @@ class TrustedParamGenerator:
         triplet = self.triplet_dict.get((client_id, op_id))
         if triplet == None:
             triplet = self.generate_triplet(client_id, op_id)
+        print("RS"*15, client_id, op_id, triplet)
         return triplet
 
     # Feel free to add as many methods as you want.
