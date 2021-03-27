@@ -129,11 +129,7 @@ class SMCParty:
                     return c + x * y_min_b + y * x_min_a
             
             else:
-                print("X"*30, "mult but not two secrets")
-                t1 = self.process_expression(expr.a, True)
-                t2 = self.process_expression(expr.b, True)
-                print("X"*30, t1, "mult", t2)
-                return t1 * t2
+                return self.process_expression(expr.a, True) * self.process_expression(expr.b, True)
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
@@ -180,9 +176,8 @@ class SMCParty:
         ) -> Tuple[Share, Share, Share]:
 
         # messages label for public msg will be: "self.client_id + op_id + _x_min_a"
-
         op_id = expr.getId()
-
+        print("#"*30, op_id)
         a, b, c = self.comm.retrieve_beaver_triplet_shares(op_id)
 
         # Compute x-a and y-b and send shares to others publicly
@@ -208,8 +203,8 @@ class SMCParty:
             while(other_y is None):
                 other_y = self.comm.retrieve_public_message(p_id, p_id + op_id + "_y_min_b")
 
-            rebuilt_x_min_a_share += other_x
-            rebuilt_y_min_b_share += other_y
+            rebuilt_x_min_a_share += Share(int(other_x))
+            rebuilt_y_min_b_share += Share(int(other_y))
 
         return rebuilt_x_min_a_share, rebuilt_y_min_b_share, c
 

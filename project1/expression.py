@@ -50,6 +50,12 @@ class Expression:
     def __hash__(self):
         return hash(self.id)
 
+    def getId(self):
+        #TODO: modify that to have a number (decode base64)?
+        #TODO: I added str(...) here. We have to test it
+        return str(self.id)
+
+
     # Feel free to add as many methods as you like.
 
 
@@ -92,37 +98,50 @@ class Secret(Expression):
             f"{self.__class__.__name__}({self.value if self.value is not None else ''})"
         )
 
-    def getId(self):
-        #TODO: modify that to have a number (decode base64)?
-        #TODO: I added str(...) here. We have to test it
-        return str(self.id)
-
     # Feel free to add as many methods as you like.
 
 
 # Feel free to add as many classes as you like.
 class AddOp(Expression):
-    def __init__(self,a,b):
+    def __init__(
+            self,
+            a: Expression,
+            b: Expression,
+            id: Optional[bytes] = None
+        ):
         self.a = a
         self.b = b
+        super().__init__(id)
         
     def __repr__(self):
         return f"({repr(self.a)} + {repr(self.b)})"
 
 
 class SubOp(Expression):
-    def __init__(self,a,b):
+    def __init__(
+            self,
+            a: Expression,
+            b: Expression,
+            id: Optional[bytes] = None
+        ):
         self.a = a
         self.b = b
+        super().__init__(id)
         
     def __repr__(self):
         return f"({repr(self.a)} - {repr(self.b)})"
 
 
 class MultOp(Expression):
-    def __init__(self,a,b):
+    def __init__(
+            self,
+            a: Expression,
+            b: Expression,
+            id: Optional[bytes] = None
+        ):
         self.a = a
         self.b = b
+        super().__init__(id)
     
     def __repr__(self):
         return f"{repr(self.a)} * {repr(self.b)}"
