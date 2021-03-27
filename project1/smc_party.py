@@ -113,40 +113,38 @@ class SMCParty:
         # if expr is a multiplication operation:
         #TODO: Check/test the mult part
         if(isinstance(expr, MultOp)):
-            print("#"*30,type(expr.a), type(expr.b))
-            #TODO: modifier les checks de types, car ils sont faux (see test_suite3)
-            if(isinstance(expr.a, Scalar) and isinstance(expr.b, Scalar)):
+            # We use triplets beavers only if there is a secret in each operand.
+            # Let's check that
+            if self.contains_secret(expr.a) and self.contains_secret(expr.b):
+                x = self.process_expression(expr.a)
+                y = self.process_expression(expr.b)
+
+                x_min_a, y_min_b, c = self.gen_beavers_shares(x, y, expr)
+
+                # Only add the constant once in the computation
+                if self.client_id == self.protocol_spec.participant_ids[0]:
+                    return c + x * y_min_b + y * x_min_a - x_min_a * y_min_b
+                else:
+                    return c + x * y_min_b + y * x_min_a
+            
+            else:
                 return self.process_expression(expr.a) * self.process_expression(expr.b)
-            elif(isinstance(expr.a, Secret) and isinstance(expr.b, Scalar)):
-                print("#"*30, expr.b)
-                return self.process_expression(expr.a) * expr.b.value
-            elif(isinstance(expr.a, Scalar) and isinstance(expr.b, Secret)):
-                print("#"*30, expr.a)
-                return self.process_expression(expr.b) * expr.a.value
-            else: # Both are Secret ==> use triplets beavers
-                # TODO: check if we only have to retrieve the ttp from the server
-                print("#"*30, "HELLO")
-                my_ttp = TrustedParamGenerator()
-                #Generate/retreive triplets
-
-
-
-                
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
-            sec = self.private_shares.get(expr)
+            sec = self.private_shares.get(expr) #TODO: work with ID instead of directly expr
             if(sec != None): #if the secret is its own
                 return Share(sec.value) # return the value of the secret in a Share
             else:
                 # get the share sent to you corresponding to the secret
-                sec = self.comm.retrieve_private_message(str(expr.getId()))
+                sec = self.comm.retrieve_private_message(expr.getId())
                 assert(sec != None) # TODO: delete this
                 return Share(int(sec))
             
         # if expr is a scalar:
         if(isinstance(expr,Scalar)):
             # only the first participant adds the Scalar
+            #TODO: check that part
             if(self.client_id == self.protocol_spec.participant_ids[0]):
                 return Share(expr.value)
             else:
@@ -157,4 +155,57 @@ class SMCParty:
         # further.
         pass
 
-    # Feel free to add as many methods as you want.
+    # Recursive search checking if an expr contains a secret
+    def contains_secret(
+            self,
+            expr : Expression
+        ):
+        if isinstance(expr, Secret):
+            return True
+        elif isinstance(expr, Scalar):
+            return False
+        else:
+            return self.contains_secret(expr.a) or self.contains_secret(expr.b)
+
+    # Generate x-a, y-b and c using beavers
+    def gen_beavers_shares(
+            self, 
+            x : Share, 
+            y : Share, 
+            expr : Expression
+        ) -> Tuple[Share, Share, Share]:
+
+        # messages label for public msg will be: "self.client_id + op_id + _x_min_a"
+
+        op_id = expr.getId()
+
+        a, b, c = self.comm.retrieve_beaver_triplet_shares(op_id)
+
+        # Compute x-a and y-b and send shares to others publicly
+        # TODO: check if the shares should be public or private
+        x_min_a_share = x - Share(a)
+        y_min_b_share = y - Share(b)
+
+        self.comm.publish_message(self.client_id + op_id + "_x_min_a", str(x_min_a_share.value))
+        self.comm.publish_message(self.client_id + op_id + "_y_min_b", str(y_min_b_share.value))
+
+        rebuilt_x_min_a_share = x_min_a_share
+        rebuilt_y_min_b_share = y_min_b_share
+
+        # Reconstruct x-a and y-b with the shares of others
+        for p_id in [p_id for p_id in self.protocol_spec.participant_ids if p_id != self.client_id]:
+            other_x = None
+            other_y = None
+
+            # Wait on others to upload their shares
+            while(other_x is None):
+                other_x = self.comm.retrieve_public_message(p_id, p_id + op_id + "_x_min_a")
+            
+            while(other_y is None):
+                other_y = self.comm.retrieve_public_message(p_id, p_id + op_id + "_y_min_b")
+
+            rebuilt_x_min_a_share += other_x
+            rebuilt_y_min_b_share += other_y
+
+        return rebuilt_x_min_a_share, rebuilt_y_min_b_share, c
+

@@ -93,7 +93,9 @@ class Secret(Expression):
         )
 
     def getId(self):
-        return self.id
+        #TODO: modify that to have a number (decode base64)?
+        #TODO: I added str(...) here. We have to test it
+        return str(self.id)
 
     # Feel free to add as many methods as you like.
 

@@ -244,12 +244,12 @@ def test_suite8():
     suite(parties, expr, expected)
 
 def test_main():
-    # print("start test_suite1 : ")
-    # test_suite1()
-    # print("end test_suite1 : ")
-    # print("start test_suite2 : ")
-    # test_suite2()
-    # print("end test_suite2 : ")
+    print("start test_suite1 : ")
+    test_suite1()
+    print("end test_suite1 : ")
+    print("start test_suite2 : ")
+    test_suite2()
+    print("end test_suite2 : ")
     print("start test_suite3 : ")
     test_suite3()
     print("end test_suite3 : ")
