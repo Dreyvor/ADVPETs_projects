@@ -7,7 +7,6 @@ import numpy as np
 
 #from expression import Secret
 
-#TODO: Modify this power for 64
 q = 2**20 # global variable q
 # 2^20 : 1st power of 2 above 10^6
 
@@ -34,7 +33,7 @@ class Share:
         return Share(self.value * other.value)
 
 
-def share_secret(secret: int, num_shares: int) -> List[Share]: ############################ NOT TESTED YET
+def share_secret(secret: int, num_shares: int) -> List[Share]:
     """Generate secret shares."""
     np.random.seed()
     s = np.random.randint(0, high=q, size=num_shares)
@@ -44,7 +43,7 @@ def share_secret(secret: int, num_shares: int) -> List[Share]: #################
     return lShare
     
 
-def reconstruct_secret(shares: List[Share]) -> int: ############################ NOT TESTED YET
+def reconstruct_secret(shares: List[Share]) -> int: 
     """Reconstruct the secret from shares."""
     res = Share(0)
     for s in shares:

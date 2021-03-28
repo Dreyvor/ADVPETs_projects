@@ -58,8 +58,6 @@ class TrustedParamGenerator:
             self.triplet_dict[(p_id, op_id)] = (a_shares[idx], b_shares[idx], c_shares[idx])
 
         res = self.triplet_dict.get((client_id, op_id))
-        # TODO: Delete the following assert when it is tested
-        assert(res != None)
 
         return res
 

@@ -51,9 +51,6 @@ class Expression:
         return hash(self.id)
 
     def getId(self):
-        #TODO: modify that to have a number (decode base64)?
-        #TODO: I added str(...) here. We have to test it
-        #return str(self.id)
         return int.from_bytes(base64.b64decode(self.id), byteorder='big', signed=False)
 
 

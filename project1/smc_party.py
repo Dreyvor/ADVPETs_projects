@@ -60,7 +60,7 @@ class SMCParty:
         self.client_id = client_id
         self.protocol_spec = protocol_spec
         self.value_dict = value_dict
-        self.private_shares: Dict[Secret, Share] = dict()
+        self.private_shares: Dict[int, Share] = dict() #the key (int) is the id of a Secret
 
     def run(self) -> int:
         """
@@ -70,7 +70,7 @@ class SMCParty:
         num_shares = len(self.protocol_spec.participant_ids)
         for (secret,val) in self.value_dict.items():
             lShares = list(share_secret(val, num_shares)) # generate shares
-            self.private_shares[secret] = lShares[0]
+            self.private_shares[secret.getId()] = lShares[0]
         
             # Send shares as private msg
             idx = 1
@@ -112,7 +112,6 @@ class SMCParty:
             return self.process_expression(expr.a) - self.process_expression(expr.b)
 
         # if expr is a multiplication operation:
-        #TODO: Check/test the mult part
         if(isinstance(expr, MultOp)):
             # We use triplets beavers only if there is a secret in each operand.
             expr_a_has_secret = self.has_secret(expr.a)
@@ -136,13 +135,12 @@ class SMCParty:
 
         # if expr is a secret:
         if(isinstance(expr, Secret)):
-            sec = self.private_shares.get(expr) #TODO: work with expr.getId instead of expr ?
+            sec = self.private_shares.get(expr.getId())
             if(sec != None): #if the secret is its own
                 return Share(sec.value) # return the value of the secret in a Share
             else:
                 # get the share sent to you corresponding to the secret
                 sec = self.comm.retrieve_private_message(str(expr.getId()))
-                assert(sec != None) # TODO: delete this
                 return Share(int(sec))
             
         # if expr is a scalar:
@@ -186,7 +184,6 @@ class SMCParty:
         c = int(c)
 
         # Compute x-a and y-b
-        # TODO: check if the shares should be public or private
         x_min_a_share = x - Share(a)
         y_min_b_share = y - Share(b)
         
@@ -197,7 +194,7 @@ class SMCParty:
         # Reconstruct x-a and y-b
         rebuilt_x_min_a_share = Share(0)
         rebuilt_y_min_b_share = Share(0)
-        for p_id in self.protocol_spec.participant_ids:#[p_id for p_id in self.protocol_spec.participant_ids if p_id != self.client_id]:
+        for p_id in self.protocol_spec.participant_ids:
             x_other = None
             y_other = None
 
