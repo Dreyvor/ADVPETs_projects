@@ -263,22 +263,29 @@ def test_suite9():
     
 def test_application():
     """
-    3 families of friends want to go together on a holiday. Each has to put a certain (secret) amount of money on the shared electronic wallet.
-    Also each family has to vote (secretly) wether or not they agree to take the plane to destination.
+    3 families of friends want to go together for 3 different trips during the vacations.
+    Each has to put a certain (secret) amount of money on the shared electronic wallet.
+    Also each family has to vote (secretly) wether or not they agree to take the plane to destinations.
     """
     
-    f1_money = Secret()
-    f2_money = Secret()
-    f3_money = Secret()
+    # Manage money
+    f1_money_trip_1 = Secret()
+    f1_money_trip_2_3 = Secret()
+    f2_money_trip_1_2 = Secret()
+    f2_money_trip_3 = Secret()
+    f3_money_trip_1_2_3 = Secret()
     parties_money = {
-            "F1_money": {f1_money: 1000},
-            "F2_money": {f2_money: 2000},
-            "F3_money": {f3_money: 10000},
+            "F1_money": {f1_money_trip_1: 1000, f1_money_trip_2_3: 800},
+            "F2_money": {f2_money_trip_1_2: 2000, f2_money_trip_3: 1300},
+            "F3_money": {f3_money_trip_1_2_3: 10000},
             }
-    expr1 = f1_money + f2_money + f3_money
-    expected_money = 1000+2000+10000
+    expr1 = (f1_money_trip_1 + Scalar(2) * f1_money_trip_2_3) \
+            + (Scalar(2) * f2_money_trip_1_2 + f2_money_trip_3) \
+            + (Scalar(3) * f3_money_trip_1_2_3)
+    expected_money = (1000 + 2*800) + (2*2000 + 1300) + (3*10000)
     suite(parties_money, expr1, expected_money)
     
+    # Manage plane votes
     f1_plane = Secret()
     f2_plane= Secret()
     f3_plane= Secret()
@@ -290,4 +297,3 @@ def test_application():
     expr2 = f1_plane * f2_plane * f3_plane
     expected_plane = 1*1*0
     suite(parties_plane, expr2, expected_plane)
-    
