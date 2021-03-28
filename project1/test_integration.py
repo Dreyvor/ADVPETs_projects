@@ -261,3 +261,33 @@ def test_suite9():
     expected = 3 * 14
     suite(parties, expr, expected)
     
+def test_application():
+    """
+    3 families of friends want to go together on a holiday. Each has to put a certain (secret) amount of money on the shared electronic wallet.
+    Also each family has to vote (secretly) wether or not they agree to take the plane to destination.
+    """
+    
+    f1_money = Secret()
+    f2_money = Secret()
+    f3_money = Secret()
+    parties_money = {
+            "F1_money": {f1_money: 1000},
+            "F2_money": {f2_money: 2000},
+            "F3_money": {f3_money: 10000},
+            }
+    expr1 = f1_money + f2_money + f3_money
+    expected_money = 1000+2000+10000
+    suite(parties_money, expr1, expected_money)
+    
+    f1_plane = Secret()
+    f2_plane= Secret()
+    f3_plane= Secret()
+    parties_plane = {
+            "F1_plane": {f1_plane: 1},
+            "F2_plane": {f2_plane: 1},
+            "F3_plane": {f3_plane: 0},
+            }
+    expr2 = f1_plane * f2_plane * f3_plane
+    expected_plane = 1*1*0
+    suite(parties_plane, expr2, expected_plane)
+    
