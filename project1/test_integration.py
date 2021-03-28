@@ -292,7 +292,7 @@ def test_application():
     parties_plane = {
             "F1_plane": {f1_plane: 1},
             "F2_plane": {f2_plane: 1},
-            "F3_plane": {f3_plane: 0},
+            "F3_plane": {f3_plane: 0}, # Family 3 does not agree
             }
     expr2 = f1_plane * f2_plane * f3_plane
     expected_plane = 1*1*0
