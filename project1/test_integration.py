@@ -34,7 +34,6 @@ def smc_client(client_id, prot, value_dict, queue):
     print_bytes = str(cli.comm.bytes_total) + ","
     print(print_bytes, file=file, end='')
     file.close()
-    
 
 
 def smc_server(args):
@@ -268,30 +267,6 @@ def test_suite9():
     expected = 3 * 14
     suite(parties, expr, expected)
     
-def test_bench():
-    t_start = time.time()
-    
-    test_suite1()
-    
-    t_total = round((time.time()-t_start)*1000) #time in ms
-    
-    results = []
-    with open("output_bench_bytes.csv") as csvfile:
-        reader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
-        for row in reader: # each row is a list
-            results.append(row)
-  
-    np_results = (np.array(results)).flatten()
-    np_results = np_results[:-1] #remove last element which is ""
-    np_results = np_results.astype(np.float)
-    nb_bytes = np.sum(np_results)
-    
-    file = open('output_bench','a')
-    print_time = "TOTAL COMPUTATION TIME [ms]: " + str(t_total)
-    print_bytes = "TOTAL BYTES : " + str(nb_bytes)
-    print(print_time, file=file)
-    print(print_bytes, file=file)
-    file.close()
     
 def test_application():
     """
@@ -334,17 +309,15 @@ def test_application():
     suite(parties_plane, expr2, expected_plane)
     
 def tests():
-    global bytes_bench
-#    test_suite1()
-#    test_suite2()
-#    test_suite3()
-#    test_suite4()
-#    test_suite5()
-#    test_suite6()
-#    test_suite7()
-#    test_suite8()
-#    test_suite9()
-    test_bench()
+    test_suite1()
+    test_suite2()
+    test_suite3()
+    test_suite4()
+    test_suite5()
+    test_suite6()
+    test_suite7()
+    test_suite8()
+    test_suite9()
     
 
 tests()

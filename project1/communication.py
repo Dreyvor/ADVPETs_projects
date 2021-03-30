@@ -152,5 +152,5 @@ class Communication:
         print(f"GET  {url}")
 
         res = requests.get(url)
-        self.bytes_total += len(res)
+        self.bytes_total += len(res.content)
         return tuple(json.loads(res.text)) # type: ignore

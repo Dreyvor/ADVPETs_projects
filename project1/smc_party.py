@@ -144,7 +144,7 @@ class SMCParty:
             
         # if expr is a scalar:
         if(isinstance(expr,Scalar)):
-            # only the first participant adds the Scalar
+            # only the first participant adds the Scalar but every participant multiply the scalar
             if (self.client_id == self.protocol_spec.participant_ids[0]) or curr_in_mult:
                 return Share(expr.value)
             else:
@@ -181,7 +181,7 @@ class SMCParty:
         a = int(a)
         b = int(b)
         c = int(c)
-
+        
         # Compute x-a and y-b
         x_min_a_share = x - Share(a)
         y_min_b_share = y - Share(b)
