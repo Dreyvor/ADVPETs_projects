@@ -6,9 +6,7 @@ You should not need to change this file.
 import json
 import time
 from typing import Union, Tuple
-
 import requests
-
 
 def sanitize_url_param(url_param: Union[bytes, str]) -> str:
     """
@@ -47,6 +45,7 @@ class Communication:
         self.base_url = f"{protocol}://{server_host}:{server_port}"
         self.client_id = client_id
         self.poll_delay = poll_delay
+        self.bytes_total = 0
 
 
     def send_private_message(
@@ -59,10 +58,12 @@ class Communication:
         Send a private message to the server.
         """
 
+        self.bytes_total += len(message)
+
         client_id_san = sanitize_url_param(self.client_id)
         receiver_id_san = sanitize_url_param(receiver_id)
         label_san = sanitize_url_param(label)
-
+        
         url = f"{self.base_url}/private/{client_id_san}/{receiver_id_san}/{label_san}"
         print(f"POST {url}")
         requests.post(url, message)
@@ -86,6 +87,7 @@ class Communication:
             print(f"GET  {url}")
             res = requests.get(url)
             if res.status_code == 200:
+                self.bytes_total += len(res.content)
                 return res.content
             time.sleep(self.poll_delay)
 
@@ -98,6 +100,8 @@ class Communication:
         """
         Publish a message on the server.
         """
+        
+        self.bytes_total += len(message)
 
         client_id_san = sanitize_url_param(self.client_id)
         label_san = sanitize_url_param(label)
@@ -128,6 +132,7 @@ class Communication:
             print(f"GET  {url}")
             res = requests.get(url)
             if res.status_code == 200:
+                self.bytes_total += len(res.content)
                 return res.content
             time.sleep(self.poll_delay)
 
@@ -147,4 +152,5 @@ class Communication:
         print(f"GET  {url}")
 
         res = requests.get(url)
+        self.bytes_total += len(res)
         return tuple(json.loads(res.text)) # type: ignore

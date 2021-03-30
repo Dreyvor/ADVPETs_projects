@@ -15,7 +15,8 @@ from protocol import ProtocolSpec
 from server import run
 
 from smc_party import SMCParty
-
+import csv
+import numpy as np
 
 def smc_client(client_id, prot, value_dict, queue):
     cli = SMCParty(
@@ -28,6 +29,12 @@ def smc_client(client_id, prot, value_dict, queue):
     res = cli.run()
     queue.put(res)
     print(f"{client_id} has finished!")
+    
+    file = open('output_bench_bytes.csv','a')
+    print_bytes = str(cli.comm.bytes_total) + ","
+    print(print_bytes, file=file, end='')
+    file.close()
+    
 
 
 def smc_server(args):
@@ -261,6 +268,31 @@ def test_suite9():
     expected = 3 * 14
     suite(parties, expr, expected)
     
+def test_bench():
+    t_start = time.time()
+    
+    test_suite1()
+    
+    t_total = round((time.time()-t_start)*1000) #time in ms
+    
+    results = []
+    with open("output_bench_bytes.csv") as csvfile:
+        reader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+        for row in reader: # each row is a list
+            results.append(row)
+  
+    np_results = (np.array(results)).flatten()
+    np_results = np_results[:-1] #remove last element which is ""
+    np_results = np_results.astype(np.float)
+    nb_bytes = np.sum(np_results)
+    
+    file = open('output_bench','a')
+    print_time = "TOTAL COMPUTATION TIME [ms]: " + str(t_total)
+    print_bytes = "TOTAL BYTES : " + str(nb_bytes)
+    print(print_time, file=file)
+    print(print_bytes, file=file)
+    file.close()
+    
 def test_application():
     """
     3 families of friends want to go together for 3 different trips during the vacations.
@@ -279,9 +311,12 @@ def test_application():
             "F2_money": {f2_money_trip_1_2: 2000, f2_money_trip_3: 1300},
             "F3_money": {f3_money_trip_1_2_3: 10000},
             }
-    expr1 = (f1_money_trip_1 + Scalar(2) * f1_money_trip_2_3) \
-            + (Scalar(2) * f2_money_trip_1_2 + f2_money_trip_3) \
-            + (Scalar(3) * f3_money_trip_1_2_3)
+    scalar_f1 = Scalar(2)
+    scalar_f2 = Scalar(2)
+    scalar_f3 = Scalar(3)
+    expr1 = (f1_money_trip_1 + scalar_f1 * f1_money_trip_2_3) \
+            + (scalar_f2 * f2_money_trip_1_2 + f2_money_trip_3) \
+            + (scalar_f3 * f3_money_trip_1_2_3)
     expected_money = (1000 + 2*800) + (2*2000 + 1300) + (3*10000)
     suite(parties_money, expr1, expected_money)
     
@@ -297,3 +332,19 @@ def test_application():
     expr2 = f1_plane * f2_plane * f3_plane
     expected_plane = 1*1*0
     suite(parties_plane, expr2, expected_plane)
+    
+def tests():
+    global bytes_bench
+#    test_suite1()
+#    test_suite2()
+#    test_suite3()
+#    test_suite4()
+#    test_suite5()
+#    test_suite6()
+#    test_suite7()
+#    test_suite8()
+#    test_suite9()
+    test_bench()
+    
+
+tests()

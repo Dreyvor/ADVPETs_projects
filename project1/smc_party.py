@@ -13,7 +13,6 @@ from typing import (
     Tuple,
     Union
 )
-from expression import Secret
 from communication import Communication
 from expression import (
     Expression,
@@ -26,13 +25,8 @@ from secret_sharing import(
     share_secret,
     Share,
 )
-import numpy as np
-from typing import List
 
 from ttp import TrustedParamGenerator
-
-# Feel free to add as many imports as you want.
-
 
 class SMCParty:
     """
@@ -66,6 +60,7 @@ class SMCParty:
         """
         The method the client use to do the SMC.
         """
+        
         # Generate share
         num_shares = len(self.protocol_spec.participant_ids)
         for (secret,val) in self.value_dict.items():
@@ -80,7 +75,7 @@ class SMCParty:
         
         # Process expression
         res_process = self.process_expression(self.protocol_spec.expr)
-            
+        
         # Share, publish_msg
         labelFinal = 'computed_shares'
         self.comm.publish_message(labelFinal, str(res_process.value))
@@ -91,8 +86,12 @@ class SMCParty:
             # retrieve
             part_res = Share(int(self.comm.retrieve_public_message(participant_id, labelFinal)))
             parts_to_combine.append(part_res)
+        
         # combine
         res = reconstruct_secret(parts_to_combine)
+        
+        print(self.client_id, " BYTES SENT/RCV : ", self.comm.bytes_total)
+
 
         return res
 
