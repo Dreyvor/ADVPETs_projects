@@ -272,7 +272,7 @@ def test_application():
     """
     3 families of friends want to go together for 3 different trips during the vacations.
     Each has to put a certain (secret) amount of money on the shared electronic wallet.
-    Also each family has to vote (secretly) wether or not they agree to take the plane to destinations.
+    Also each family has to vote (secretly) whether or not they agree to take the plane to destinations.
     """
     
     # Manage money
