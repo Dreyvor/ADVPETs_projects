@@ -265,14 +265,14 @@ def test_application():
     """
     3 families of friends want to go together for 3 different trips during the vacations.
     Each has to put a certain (secret) amount of money on the shared electronic wallet.
-    Also each family has to vote (secretly) wether or not they agree to take the plane to destinations.
+    Also each family has to vote (secretly) whether or not they agree to take the plane to destinations.
     """
     
     # Manage money
     f1_money_trip_1 = Secret()
     f1_money_trip_2_3 = Secret()
     f2_money_trip_1_2 = Secret()
-    f2_money_trip_3 = Secret()
+    f2_money_trip_3 = Secret()  
     f3_money_trip_1_2_3 = Secret()
     parties_money = {
             "F1_money": {f1_money_trip_1: 1000, f1_money_trip_2_3: 800},
