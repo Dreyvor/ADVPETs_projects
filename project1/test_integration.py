@@ -266,6 +266,23 @@ def test_suite9():
     )
     expected = 3 * 14
     suite(parties, expr, expected)
+
+def test_mult_scal():
+    alice_secret = Secret()
+    bob_secret = Secret()
+    c_secret = Secret()
+
+    parties = {
+        "Alice": {alice_secret: 3},
+        "Bob": {bob_secret: 14},
+        "C": {c_secret: 10},
+    }
+
+    expr = (
+        (Scalar(2) * Scalar(3) * Scalar(4))
+    )
+    expected = 2*3*4
+    suite(parties, expr, expected)
     
     
 def test_application():
@@ -320,7 +337,8 @@ def tests():
 #    test_suite7()
 #    test_suite8()
 #    test_suite9()
-    test_application()
+    test_mult_scal()
+#    test_application()
     
 
 tests()

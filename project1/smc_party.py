@@ -75,7 +75,6 @@ class SMCParty:
         
         # Process expression
         res_process = self.process_expression(self.protocol_spec.expr)
-        
         # Share, publish_msg
         labelFinal = 'computed_shares'
         self.comm.publish_message(labelFinal, str(res_process.value))
@@ -89,9 +88,6 @@ class SMCParty:
         
         # combine
         res = reconstruct_secret(parts_to_combine)
-        
-        print(self.client_id, " BYTES SENT/RCV : ", self.comm.bytes_total)
-
 
         return res
 
