@@ -228,6 +228,7 @@ def test_bench():
     # t_start = time.time()
     
     str_n_mult_secrets(1000) # Choose the application you want to tests
+    # str_n_addition_secrets(1000)
     
     # t_total = round((time.time()-t_start)*1000) #time in ms
     
