@@ -25,29 +25,3 @@ def test_participants():
 		assert (p in ["Alice", "Bob", "Charlie", "Denis"])
 
 	print("Test participants ok")
-
-# The test below is not ready to be used
-
-# def test_retrieve_share():
-# 	my_ttp = TrustedParamGenerator()
-
-# 	my_ttp.add_participant("Alice")
-# 	my_ttp.add_participant("Bob")
-# 	my_ttp.add_participant("Charlie")
-
-# 	triplet = my_ttp.generate_triplet(1, 1)
-# 	for e in triplet:
-# 		assert(e >= 0 and e <= q)
-
-# 	assert(1==0)
-
-# 	print("Test retrieve_share ok")
-
-"""def test():
-    print('Running tests...')
-
-    test_participants()
-
-    print('Tests OK')
-
-test()"""

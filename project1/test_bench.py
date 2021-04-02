@@ -225,29 +225,29 @@ def test_bench():
     
     sys.setrecursionlimit(10000)
     
-    t_start = time.time()
+    # t_start = time.time()
     
-    str_n_addition_scalars(500)
+    str_n_mult_secrets(1000) # Choose the application you want to tests
     
-    t_total = round((time.time()-t_start)*1000) #time in ms
+    # t_total = round((time.time()-t_start)*1000) #time in ms
     
-    results = []
-    with open("output_bench_bytes.csv") as csvfile:
-        reader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
-        for row in reader: # each row is a list
-            results.append(row)
+    # results = []
+    # with open("output_bench_bytes.csv") as csvfile:
+    #     reader = csv.reader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+    #     for row in reader: # each row is a list
+    #         results.append(row)
   
-    np_results = (np.array(results)).flatten()
-    np_results = np_results[:-1] #remove last element which is ""
-    np_results = np_results.astype(np.float)
-    nb_bytes = np.sum(np_results)
+    # np_results = (np.array(results)).flatten()
+    # np_results = np_results[:-1] #remove last element which is ""
+    # #np_results = np_results.astype(np.float)
+    # nb_bytes = np.sum(np_results)
     
-    file = open('output_bench','a')
-    print_time = "TOTAL COMPUTATION TIME [ms]: " + str(t_total)
-    print_bytes = "TOTAL BYTES : " + str(nb_bytes)
-    print(print_time, file=file)
-    print(print_bytes, file=file)
-    file.close()
+    # file = open('output_bench','a')
+    # print_time = "TOTAL COMPUTATION TIME [ms]: " + str(t_total)
+    # print_bytes = "TOTAL BYTES : " + str(nb_bytes)
+    # print(print_time, file=file)
+    # print(print_bytes, file=file)
+    # file.close()
     
 
 def tests():
