@@ -337,19 +337,4 @@ def test_application():
     expr2 = f1_plane * f2_plane * f3_plane
     expected_plane = 1*1*0
     suite(parties_plane, expr2, expected_plane)
-    
-def tests():
-#    test_suite1()
-#    test_suite2()
-#    test_suite3()
-#    test_suite4()
-#    test_suite5()
-#    test_suite6()
-#    test_suite7()
-#    test_suite8()
-#    test_suite9()
-#    test_mult_scal()
-    test_application()
-    
-
-tests()
+   
