@@ -294,24 +294,35 @@ def test_application():
     
     # Manage money
     f1_money_trip_1 = Secret() #1st family money for the 1st trip
-    f1_money_trip_2_3 = Secret() #1st family money for the 2nd and 3rd trips
-    f2_money_trip_1_2 = Secret() #2nd family money for the 1st and 2nd trips
-    f2_money_trip_3 = Secret() #2nd family money for the 3rd trip
-    f3_money_trip_1_2_3 = Secret() #3rd family money for all 3 trips
+    f1_money_trip_2 = Secret() #1st family money for the 2nd trip
+    f1_money_trip_3 = Secret() #1st family money for the 3nd trip
+    
+    f2_money_trip_1 = Secret() #2nd family money for the 1st trip
+    f2_money_trip_2 = Secret() #2nd family money for the 2nd trip
+    f2_money_trip_3 = Secret() #2nd family money for the 3nd trip
+    
+    f3_money_trip_1 = Secret() #3rd family money for the 1st trip
+    f3_money_trip_2 = Secret() #3rd family money for the 2nd trip
+    f3_money_trip_3 = Secret() #3rd family money for the 3nd trip
+    
     parties_money = {
-            "F1_money": {f1_money_trip_1: 1000, f1_money_trip_2_3: 800},
-            "F2_money": {f2_money_trip_1_2: 2000, f2_money_trip_3: 1300},
-            "F3_money": {f3_money_trip_1_2_3: 10000},
-            }
-    scalar_f1 = Scalar(2) #1st family pays two times the amount for 2nd trip (and 3rd trip)
-    scalar_f2 = Scalar(2) #2nd family pays two times the amount for 1st trip (and 2nd trip)
-    scalar_f3 = Scalar(3) #3rd family pays three times the amount for 1st trip (2nd and 3rd trips)
-    scalar_insurance = Scalar(50) #insurance as a scalar
-    scalar_discount = Scalar(200) #they plan the trip together as 3 families -> discount
-    expr1 = (f1_money_trip_1 + scalar_f1 * f1_money_trip_2_3) \
-            + (scalar_f2 * f2_money_trip_1_2 + f2_money_trip_3) \
-            + (scalar_f3 * f3_money_trip_1_2_3) - scalar_insurance + scalar_discount
-    expected_money = (1000 + 2*800) + (2*2000 + 1300) + (3*10000) - 50 + 200
+            "F1_money": {f1_money_trip_1: 1000,  f1_money_trip_2: 800,   f1_money_trip_3: 800},
+            "F2_money": {f2_money_trip_1: 2000,  f2_money_trip_2: 2000,  f2_money_trip_3: 1300},
+            "F3_money": {f3_money_trip_1: 10000, f3_money_trip_2: 10000, f3_money_trip_3: 10000},
+        }
+    scalar_trip_1 = Scalar(2) # The 1st trip lasts 2 weeks
+    scalar_trip_2 = Scalar(1) # The 2nd trip lasts 1 weeks
+    scalar_trip_3 = Scalar(3) # The 3rd trip lasts 3 weeks
+    scalar_insurance = Scalar(50) # insurance per trip as a scalar
+    scalar_discount = Scalar(200) # they plan the trip together as 3 families -> discount on the first trip
+    expr1 = scalar_trip_1 * (f1_money_trip_1 + f2_money_trip_1 + f3_money_trip_1) \
+            + scalar_trip_2 * (f1_money_trip_2 + f2_money_trip_2 + f3_money_trip_2) \
+            + scalar_trip_3 * (f1_money_trip_3 + f2_money_trip_3 + f3_money_trip_3) \
+            - Scalar(3) * scalar_insurance + scalar_discount
+    expected_money = 2 * (1000 + 2000 + 10000) \
+            + 1 * (800 + 2000 + 10000) \
+            + 3 * (800 + 1300 + 10000) \
+            - 3 * 50 + 200
     suite(parties_money, expr1, expected_money)
     
     # Manage plane votes
@@ -337,8 +348,8 @@ def tests():
 #    test_suite7()
 #    test_suite8()
 #    test_suite9()
-    test_mult_scal()
-#    test_application()
+#    test_mult_scal()
+    test_application()
     
 
 tests()
