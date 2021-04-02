@@ -92,6 +92,8 @@ def str_n_addition_secrets(n:int):
     nb_launch = 15
     for i in range(nb_launch):
 
+        t_start_i = time.time()
+        
         parties = {}            
         for j in range(5): #with always 5 participants
             act_secret = Secret()
@@ -107,10 +109,18 @@ def str_n_addition_secrets(n:int):
         expected = n*10 % q
         suite(parties,expr,expected)
         
+        t_total_i = time.time() - t_start_i
+        file = open('output_bench_sec_add','a')
+        print_time = str(t_total_i)
+        print(print_time, file=file)
+        file.close()
+        
 def str_n_addition_scalars(n:int): 
     nb_launch = 15
     for i in range(nb_launch):
 
+        t_start_i = time.time()
+        
         parties = {}            
         for j in range(5): #with always 5 participants
             act_secret = Secret()
@@ -124,10 +134,18 @@ def str_n_addition_scalars(n:int):
         expected = n*10 % q
         suite(parties,expr,expected)
         
+        t_total_i = time.time() - t_start_i
+        file = open('output_bench_scal_add','a')
+        print_time = str(t_total_i)
+        print(print_time, file=file)
+        file.close()
+        
 def str_n_mult_secrets(n:int): 
     nb_launch = 15
     for i in range(nb_launch):
 
+        t_start_i = time.time()
+        
         parties = {}            
         for j in range(5): #with always 5 participants
             act_secret = Secret()
@@ -144,10 +162,18 @@ def str_n_mult_secrets(n:int):
         expected = 3**n % q
         suite(parties,expr,expected)
         
+        t_total_i = time.time() - t_start_i
+        file = open('output_bench_sec_mul','a')
+        print_time = str(t_total_i)
+        print(print_time, file=file)
+        file.close()
+        
 def str_n_mult_scalars(n:int): 
     nb_launch = 15
     for i in range(nb_launch):
 
+        t_start_i = time.time()
+        
         parties = {}            
         for j in range(5): #with always 5 participants
             act_secret = Secret()
@@ -161,6 +187,12 @@ def str_n_mult_scalars(n:int):
         expected = 3**n % q
         suite(parties,expr,expected)
         
+        t_total_i = time.time() - t_start_i
+        file = open('output_bench_scal_mul','a')
+        print_time = str(t_total_i)
+        print(print_time, file=file)
+        file.close()
+        
         
 def str_nb_participants(n:int): 
     
@@ -169,6 +201,8 @@ def str_nb_participants(n:int):
     nb_launch = 15
     for i in range(nb_launch):
 
+        t_start_i = time.time()
+        
         parties = {}
         expr = Scalar(5)
         for j in range(n): #with n participants
@@ -179,15 +213,21 @@ def str_nb_participants(n:int):
         print(expr)
         expected = (5 + 3*n) % q
         suite(parties,expr,expected)
+        
+        t_total_i = time.time() - t_start_i
+        file = open('output_bench_nb_part','a')
+        print_time = str(t_total_i)
+        print(print_time, file=file)
+        file.close()
+        
     
 def test_bench():
     
     sys.setrecursionlimit(10000)
-    print(sys.getrecursionlimit())
     
     t_start = time.time()
     
-    str_n_mult_secrets(1000)
+    str_n_addition_scalars(100)
     
     t_total = round((time.time()-t_start)*1000) #time in ms
     
