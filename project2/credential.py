@@ -19,15 +19,20 @@ from typing import Any, List, Tuple
 
 from serialization import jsonpickle
 
+from petrelic.multiplicative.pairing import G1, G2, GT
+from petrelic.multiplicative.pairing import G1Element, G2Element
+from petrelic.bn import Bn
+
+import numpy as np
 
 # Type hint aliases
 # Feel free to change them as you see fit.
 # Maybe at the end, you will not need aliases at all!
-SecretKey = Any
-PublicKey = Any
-Signature = Any
-Attribute = Any
-AttributeMap = Any
+SecretKey = Tuple[Bn,G1Element,List[Bn]]
+PublicKey = Tuple[G1Element,List[G1Element],G2Element,G2Element,List[G2Element]]
+Signature = Tuple[G1Element,G1Element]
+Attribute = Bn
+AttributeMap = List[Bn]
 IssueRequest = Any
 BlindSignature = Any
 AnonymousCredential = Any
@@ -43,7 +48,34 @@ def generate_key(
         attributes: List[Attribute]
     ) -> Tuple[SecretKey, PublicKey]:
     """ Generate signer key pair """
-    raise NotImplementedError()
+    
+    L = len(attributes)
+    
+    # Random group generators, public
+    g = G1.generator() ** G1.order().random()
+    gt = G2.generator() ** G2.order().random()
+    while(g == G1.neutral_element): # cannot be the neutral element
+        g = G1.generator() ** G1.order().random()
+    while(gt == G2.neutral_element): # cannot be the neutral element
+        gt = G2.generator() ** G2.order().random()
+        
+    # Generate secret and public keys
+    x = G1.order().random() #secret
+    X = g ** x #secret
+    Xt = gt ** x #public
+    
+    y = np.array((L,1),dtype=Bn) #secret
+    Y = np.array((L,1),dtype=G1Element) #public
+    Yt = np.array((L,1),dtype=G2Element) #public
+    for i in range(L):
+        y[i] = G1.order().random()
+        Y[i] = g ** y[i]
+        Yt[i] = gt ** y[i]
+    
+    pk = (g,Y.tolist(),gt,Xt,Yt.tolist())
+    sk = (x,X,y.tolist())
+    
+    return (sk,pk)
 
 
 def sign(
@@ -51,7 +83,19 @@ def sign(
         msgs: List[bytes]
     ) -> Signature:
     """ Sign the vector of messages `msgs` """
-    raise NotImplementedError()
+    
+    # h a random generator (check that it is not the neutral element)
+    h = G1.generator() ** G1.order().random()
+    while(h == G1.neutral_element):
+        h = G1.generator() ** G1.order().random()
+
+    (x,X,y) = sk
+    y = np.array(y)
+    m = np.array([Bn.from_binary(m) for m in msgs])
+    
+    s = h ** (x+np.add.reduce(y*m))
+
+    return (h,s)
 
 
 def verify(
@@ -60,8 +104,23 @@ def verify(
         msgs: List[bytes]
     ) -> bool:
     """ Verify the signature on a vector of messages """
-    raise NotImplementedError()
 
+    (h,s) = signature
+    (g,Y,gt,Xt,Yt) = pk
+    
+    if(h == G1.neutral_element):
+        return False
+    
+    m = np.array([Bn.from_binary(m) for m in msgs])
+    
+    ym = Yt ** m
+    
+    if(h.pair(Xt*np.multiply.reduce(ym)) != s.pair(gt)):
+        return False
+    
+    return True
+    
+    
 
 #################################
 ## ATTRIBUTE-BASED CREDENTIALS ##
@@ -78,9 +137,9 @@ def create_issue_request(
     This corresponds to the "user commitment" step in the issuance protocol.
 
     *Warning:* You may need to pass state to the `obtain_credential` function.
-    """
+    """    
     raise NotImplementedError()
-
+    
 
 def sign_issue_request(
         sk: SecretKey,
