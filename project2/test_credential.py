@@ -9,7 +9,10 @@ Created on Thu Apr 29 14:05:21 2021
 import credential as c
 import numpy as np
     
-def test_id():
+############################
+# TEST GENKEY, SIG, VERIFY #
+############################
+def test_gen_sign_verify():
     att1 = c.Bn(1)
     att2 = c.Bn(2)
     att = np.array([att1,att2]).tolist()
@@ -40,6 +43,7 @@ def test_verify_neutral():
 def test_verify_wrong_msg():
     att1 = c.Bn(1)
     att2 = c.Bn(2)
+    
     att = np.array([att1,att2]).tolist()
     
     (sk,pk) = c.generate_key(att)
@@ -62,10 +66,93 @@ def test_verify_wrong_sig():
     msgs = np.array([b'01',b'02']).tolist() 
     (h,s) = c.sign(sk,msgs)
     
-    sp = c.G1.generator() ** c.G1.order().random()
-    while(s == sp):
-        sp = c.G1.generator() ** c.G1.order.random()
+    sp = c.get_random_G1_different_from(s)
     
     res = c.verify(pk,(h,sp),msgs)
 
     assert not res
+        
+##########################
+# TEST ISSUANCE PROTOCOL #
+##########################
+def test_request():
+    att1 = c.Bn(1)
+    att2 = c.Bn(2)
+    att = np.array([att1,att2]).tolist()
+    
+    (sk,pk) = c.generate_key(att)
+    
+    ua = {0: att1, 1: att2}
+    
+    (request,t) = c.create_issue_request(pk,ua)
+
+    assert request != None
+
+def test_sign_request():
+    att1 = c.Bn(1)
+    att2 = c.Bn(2)
+    att = np.array([att1,att2]).tolist()
+    
+    (sk,pk) = c.generate_key(att)
+    
+    ua = {0: att1}
+    ia = {1: att2}
+    
+    (request,t) = c.create_issue_request(pk,ua)
+    (sig1,sig2,ai) = c.sign_issue_request(sk,pk,request,ia)
+
+    assert sig1 != None and sig2 != None and ai != None
+    
+def test_sign_request_wrong_commit():
+    att1 = c.Bn(1)
+    att2 = c.Bn(2)
+    att = np.array([att1,att2]).tolist()
+    
+    (sk,pk) = c.generate_key(att)
+    
+    ua = {0: att1}
+    ia = {1: att2}
+    
+    ((com,pi),t) = c.create_issue_request(pk,ua)
+    
+    pi2 = c.hashlib.sha3_512(b'0') # Change hash of the commited value
+    
+    request = (com,pi2)
+    res = c.sign_issue_request(sk,pk,request,ia)
+
+    assert res == None
+
+def test_obtain_cred():
+    att1 = c.Bn(1)
+    att2 = c.Bn(2)
+    att = np.array([att1,att2]).tolist()
+    
+    (sk,pk) = c.generate_key(att)
+    
+    ua = {0: att1}
+    ia = {1: att2}
+    
+    (request,t) = c.create_issue_request(pk,ua)
+    (sig1,sig2,ai) = c.sign_issue_request(sk,pk,request,ia)
+    (sig,aj) = c.obtain_credential(pk,(sig1,sig2,ai),t,ua)
+    
+    assert sig != None and aj != None
+
+def test_obtain_cred_wrong_sig():
+    att1 = c.Bn(1)
+    att2 = c.Bn(2)
+    att = np.array([att1,att2]).tolist()
+    
+    (sk,pk) = c.generate_key(att)
+    
+    ua = {0: att1}
+    ia = {1: att2}
+    
+    (request,t) = c.create_issue_request(pk,ua)
+    (sig1,sig2,ai) = c.sign_issue_request(sk,pk,request,ia)
+    
+    sig1 = c.get_random_G1_different_from(sig1)
+    res = c.obtain_credential(pk,(sig1,sig2,ai),t,ua)
+    
+    assert res == None
+    
