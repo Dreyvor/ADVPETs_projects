@@ -15,9 +15,7 @@ resembles the original scheme definition. However, you are free to restructure
 the functions provided to resemble a more object-oriented interface.
 """
 
-import pdb
-
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 from serialization import jsonpickle
 

@@ -233,3 +233,27 @@ def test_verify_disclosure_proof():
     res = c.verify_disclosure_proof(pk,disProof)
     
     assert res
+    
+def test_verify_disclosure_proof_bigNumbers():
+    att1 = c.Bn(100123)
+    att2 = c.Bn(201234)
+    att3 = c.Bn(10321)
+    att4 = c.Bn(31273)
+    att = np.array([att1,att2,att3,att4]).tolist()
+    
+    (sk,pk) = c.generate_key(att)
+    
+    ua = {0: att1, 2:att3}
+    ia = {1: att2, 3:att4}
+    
+    (request,t) = c.create_issue_request(pk,ua)
+    ((sig1,sig2),ai) = c.sign_issue_request(sk,pk,request,ia)
+    (sig,aj) = c.obtain_credential(pk,((sig1,sig2),ai),t,ua)
+    
+    
+    hid_att = ua
+    disProof = c.create_disclosure_proof(pk,(sig,aj),hid_att)
+    
+    res = c.verify_disclosure_proof(pk,disProof)
+    
+    assert res
