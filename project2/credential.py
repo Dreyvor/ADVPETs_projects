@@ -15,6 +15,8 @@ resembles the original scheme definition. However, you are free to restructure
 the functions provided to resemble a more object-oriented interface.
 """
 
+import pdb
+
 from typing import Any, List, Tuple
 
 from serialization import jsonpickle
@@ -37,10 +39,10 @@ PublicKey = Tuple[G1Element,List[G1Element],G2Element,G2Element,List[G2Element]]
 Signature = Tuple[G1Element,G1Element]
 Attribute = Bn
 AttributeMap = Dict[int,Attribute] 
-IssueRequest = Any #Tuple[G1Element,Tuple[]]]
-BlindSignature = Tuple[G1Element,G1Element,AttributeMap]
-AnonymousCredential = [G1Element,List[Attribute]]
-DisclosureProof = Any
+IssueRequest = Tuple[G1Element,str]
+BlindSignature = Tuple[Tuple[G1Element,G1Element],AttributeMap]
+AnonymousCredential = Tuple[G1Element,AttributeMap]
+DisclosureProof = Tuple[Tuple[G1Element,G1Element],Tuple[List[int],List[Attribute]],str]
 
 
 ######################
@@ -54,18 +56,18 @@ def generate_key(
     
     L = len(attributes)
     
-    # Random group generators, public
-    g = get_random_G1_different_from()
-    gt = get_random_G2_different_from()
+    # Group generators, public
+    g = G1.generator()
+    gt = G2.generator()
         
     # Generate secret and public keys
     x = G1.order().random() #secret
     X = g ** x #secret
     Xt = gt ** x #public
     
-    y = np.array((L,1),dtype=Bn) #secret
-    Y = np.array((L,1),dtype=G1Element) #public
-    Yt = np.array((L,1),dtype=G2Element) #public
+    y = np.empty((L,1),dtype=Bn) #secret
+    Y = np.empty((L,1),dtype=G1Element) #public
+    Yt = np.empty((L,1),dtype=G2Element) #public
     for i in range(L):
         y[i] = G1.order().random()
         Y[i] = g ** y[i]
@@ -84,10 +86,12 @@ def sign(
     """ Sign the vector of messages `msgs` """
     
     # h a random generator (check that it is not the neutral element)
-    h = get_random_G1_different_from()
-
+    h = G1.generator() ** G1.order().random()
+    while(h == G1.neutral_element):
+        h = G1.generator() ** G1.order().random()
+    
     (x,X,y) = sk
-    y = np.array(y)
+    y = np.array(y).flatten()
     m = np.array([Bn.from_binary(m) for m in msgs])
     
     s = h ** (x+np.add.reduce(y*m))
@@ -105,17 +109,15 @@ def verify(
     (h,s) = signature
     (g,Y,gt,Xt,Yt) = pk
     
+    Yt = np.array(Yt).flatten()
+    
     if(h == G1.neutral_element):
         return False
     
     m = np.array([Bn.from_binary(m) for m in msgs])
-    
     ym = Yt ** m
     
-    if(h.pair(Xt*np.multiply.reduce(ym)) != s.pair(gt)):
-        return False
-    
-    return True
+    return h.pair(Xt*np.multiply.reduce(ym)) == s.pair(gt)
     
     
 
@@ -124,7 +126,6 @@ def verify(
 #################################
 
 ## ISSUANCE PROTOCOL ##
-
 def create_issue_request(
         pk: PublicKey,
         user_attributes: AttributeMap
@@ -141,14 +142,13 @@ def create_issue_request(
     
     # Compute C
     t = G1.order().random()
-    gt = g**t
     
     ai = np.array(list(user_attributes.values()))
-    Yi = Y[list(user_attributes.keys())]
+    Yi = np.array(Y[list(user_attributes.keys())]).flatten()
     ya = np.multiply.reduce(Yi**ai)
-    C = gt * ya
-    
-    # Compute pi (Fiat-Shamir heuristic)
+    C = ((g**t) * ya)
+
+    # Compute pi (Fiat-Shamir heuristic), Proof of knowledge
     h = bytes(str(pk)+str(C),'utf-8')
     PI = hashlib.sha3_512(h).hexdigest()
     
@@ -172,23 +172,25 @@ def sign_issue_request(
     
     (C,PI) = request
     
-    # Check commitment (Fiat-Shamir heuristic)
+    # Check commitment (Fiat-Shamir heuristic), Check proof of knowledge
     h = bytes(str(pk)+str(C),'utf-8')
     PI_2 = hashlib.sha3_512(h).hexdigest()
     if(PI != PI_2):
+        print("Cannot sign issue : could not verify proof of pi with respect to commitment C")
         return None
     
     # Compute sigma'
     u = G1.order().random()
     sig1 = g ** u
-    
+
     ai = np.array(list(issuer_attributes.values()))
-    Yi = Y[list(issuer_attributes.keys())]
+    Yi = np.array(Y[list(issuer_attributes.keys())]).flatten()
     ya = np.multiply.reduce(Yi**ai)
     
     sig2 = (X*C*ya) ** u
     
-    return (sig1,sig2,issuer_attributes)
+    sigp = (sig1,sig2)
+    return (sigp,issuer_attributes)
     
 
 def obtain_credential(
@@ -202,20 +204,24 @@ def obtain_credential(
     This corresponds to the "Unblinding signature" step.
     """
     
-    (sig1,sig2,issuer_attributes) = response
+    (g,Y,gt,Xt,Yt) = pk
+    ((sigp1,sigp2),issuer_attributes) = response
     
-    sig = (sig1,sig2/(sig1**t))
-     
+    sig = (sigp1, sigp2/(sigp1**t))
+
     whole_attributes = {**issuer_attributes, **user_attributes}
     whole_attributes = dict(sorted(whole_attributes.items()))
 
-    ai = list(whole_attributes.values())    
-    ai = [bytes.fromhex('0'+Bn.hex(a)) for a in ai] #add '0' bc fromhex reads two digits hexa numbers
+    #add '0' in front of hex if not even length because bytes.fromhex reads two digits hexa numbers
+    ai = list(whole_attributes.values())
+    ai_hex_pad = ['0'+Bn.hex(a) if len(Bn.hex(a))%2 != 0 else Bn.hex(a) for a in ai]
+    ai = [bytes.fromhex(a) for a in ai_hex_pad] 
     
     # If sig is a valid signature for the attributes
     if(verify(pk,sig,ai)):
-        return (sig,ai)
+        return (sig,whole_attributes)
     else:
+        print("No credential obtained : could not verify signature")
         return None
 
 
@@ -224,37 +230,62 @@ def obtain_credential(
 def create_disclosure_proof(
         pk: PublicKey,
         credential: AnonymousCredential,
-        hidden_attributes: List[Attribute],
-        message: bytes
+        hidden_attributes: AttributeMap
     ) -> DisclosureProof:
     """ Create a disclosure proof """
-    raise NotImplementedError()
+    
+    (g,Y,gt,Xt,Yt) = pk
+    ((sig1,sig2),ai) = credential
+    
+    # Prepare disclosed attributes
+    disclosed_attributes_keys = [att for att in ai if att not in hidden_attributes]
+    disclosed_attributes_values = [ai.get(k) for k in disclosed_attributes_keys]
+    
+    t = G1.order().random()
+    r = G1.order().random()
+    while(sig1 ** r == G1.neutral_element): # r cannot be the neutral element
+        r = G1.order().random()
+    
+    sigp1 = sig1 ** r
+    sigp2 = (sig2*(sig1**t))**r
+    sigp = (sigp1, sigp2)
+    
+    # PK : with Fiat-Shamir heuristic
+    ai_h = np.array(list(hidden_attributes.values()))
+    Yti = np.array([Yt[i] for i in list(hidden_attributes.keys())]).flatten()
+    e_Yt = np.array([sigp1.pair(yti) for yti in Yti])
 
+    sigp1_yit_ai = e_Yt ** ai_h
+    p = ((sigp1.pair(gt))**t) * np.multiply.reduce(sigp1_yit_ai) 
+    h = bytes(str(pk)+str(disclosed_attributes_keys)+str(disclosed_attributes_values)+str(p),'utf-8')
+
+    PI = hashlib.sha3_512(h).hexdigest()
+    
+    return (sigp,(disclosed_attributes_keys,disclosed_attributes_values),PI)
 
 def verify_disclosure_proof(
         pk: PublicKey,
-        disclosure_proof: DisclosureProof,
-        message: bytes
+        disclosure_proof: DisclosureProof
     ) -> bool:
     """ Verify the disclosure proof
 
     Hint: The verifier may also want to retrieve the disclosed attributes
     """
-    raise NotImplementedError()
-
-
-## HELPER FUNCTIONS ##
-
-# Return a random element of G1 different from the neutral element and another given element as parameter
-def get_random_G1_different_from(elem=G1.neutral_element):
-    rdm = G1.generator() ** G1.order().random()
-    while(rdm == G1.neutral_element or rdm.eq(elem)):
-        rdm = G1.generator() ** G1.order().random()
-    return rdm
-
-# Same as 'get_random_G1_different_from()' but with G2
-def get_random_G2_different_from(elem=G2.neutral_element):
-    rdm = G2.generator() ** G2.order().random()
-    while(rdm == G2.neutral_element or rdm.eq(elem)):
-        rdm = G2.generator() ** G2.order().random()
-    return rdm
+    
+    (g,Y,gt,Xt,Yt) = pk
+    ((sigp1,sigp2),disclosed_attributes,PI) = disclosure_proof
+    (da_keys, da_values) = disclosed_attributes
+    
+    if(sigp1 == G1.neutral_element):
+        return False
+    
+    # Verify the PK, (Fiat-Shamir)
+    ai_d = np.array(da_values)
+    Yti = np.array([Yt[i] for i in da_keys]).flatten()
+    e_Yt = np.array([sigp1.pair(yti) for yti in Yti])
+    sigp1_yit_ai = e_Yt ** (-ai_d)
+    p = sigp2.pair(gt) * np.multiply.reduce(sigp1_yit_ai) / sigp1.pair(Xt)
+    h = bytes(str(pk)+str(da_keys)+str(da_values)+str(p),'utf-8')
+    PI2 = hashlib.sha3_512(h).hexdigest()
+    
+    return PI == PI2 
