@@ -206,7 +206,7 @@ def obtain_credential(
     ((sigp1,sigp2),issuer_attributes) = response
     
     sig = (sigp1, sigp2/(sigp1**t))
-
+    
     whole_attributes = {**issuer_attributes, **user_attributes}
     whole_attributes = dict(sorted(whole_attributes.items()))
 

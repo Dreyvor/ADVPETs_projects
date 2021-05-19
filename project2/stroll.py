@@ -46,11 +46,11 @@ class Server:
         valid_sub: SubscriptionMap = {}
         for i in range(len(subscriptions)):
              valid_sub[subscriptions[i]] = (i+1, c.G1.order().random()) #i+1 because 0 is for the user
-        
-        att = list(valid_sub.values()) + [(0, None)]
+
+        att = list(valid_sub.values()) + [{0: None}]
         (sk_s, pk_s) = c.generate_key(att)
         
-        return (jsonpickle.encode((sk_s, valid_sub)),jsonpickle.encode(pk_s)).encode()
+        return (jsonpickle.encode((sk_s, valid_sub)).encode(), jsonpickle.encode(pk_s).encode())
         
 
     def process_registration(
@@ -86,8 +86,8 @@ class Server:
         if not is_valid:
             return jsonpickle.encode(None).encode()
         
-        # Issuer attributes
-        iss_att = [att for (k, att) in valid_sub if k not in subscriptions]
+        # Issuer attributes, create an AttributeMap from valid subscriptions
+        iss_att = {att[0]:att[1] for (k, att) in valid_sub.items() if k not in subscriptions}
         
         # Recover C and PI, decode
         req: c.IssueRequest  = jsonpickle.decode(issuance_request)
@@ -95,6 +95,8 @@ class Server:
             return jsonpickle.encode(None).encode()
         
         signed_req = c.sign_issue_request(s_sk, s_pk, req, iss_att)
+        
+        (_,iss_att2) = signed_req
                 
         return jsonpickle.encode(signed_req).encode()
 
@@ -177,7 +179,8 @@ class Client:
         self.pk = pk_c
         
         # User attributes : client's secret key (with key 0)
-        user_att = [(0, sk_c)]
+        (x,_,_) = sk_c
+        user_att = {0: x}
         
         # Create the request
         (req, t) = c.create_issue_request(server_pk, user_att)
@@ -187,7 +190,7 @@ class Client:
         
         req = jsonpickle.encode(req)
         
-        return (req,state).encode()
+        return (req.encode(), state)
 
     def process_registration_response(
             self,
@@ -210,13 +213,20 @@ class Client:
         # Get private state
         (t,sk) = private_state
         
-        # Parse server response, if None returns None
+        # Deserialize server response, if None returns None
+        server_pk = jsonpickle.decode(server_pk)
         response_dec = jsonpickle.decode(server_response)
         if response_dec == None:
             return jsonpickle.encode(None).encode()
-                
+        
+        # Somehow the key of the attributes are cast to str -> recast to int
+        ((sig1,sig2),iss_att) = response_dec
+        iss_att = {int(key):att for (key,att) in iss_att.items()}
+        response_dec = ((sig1, sig2), iss_att)
+        
         # Obtain credentials
-        credential = c.obtain_credential(server_pk, response_dec, t, [(0, sk)])
+        (x,_,_) = sk
+        credential = c.obtain_credential(server_pk, response_dec, t, {0: x})
         
         return jsonpickle.encode(credential).encode()
         
