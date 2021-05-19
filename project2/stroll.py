@@ -9,12 +9,9 @@ from serialization import jsonpickle
 import credential as c
 
 # Type aliases
-State = Tuple[c.Bn,c.SecretKey]
+State = Tuple[c.Bn, c.SecretKey]
 
-SubscriptionMap = Dict[str, Tuple[int,c.Attribute]]
-
-#all_subscriptions = ['appartment_block', 'bar', 'cafeteria', 'club', 'company', 'dojo', 'gym', 'laboratory', 'office',
-                     'restaurant', 'supermarket', 'villa']
+SubscriptionMap = Dict[str, Tuple[int, c.Attribute]]
 
 class Server:
     """Server"""
@@ -25,7 +22,6 @@ class Server:
         Server constructor.
         """
         self.valid_sub: SubscriptionMap = {}
-
 
     @staticmethod
     def generate_ca(
@@ -49,12 +45,12 @@ class Server:
         
         valid_sub: SubscriptionMap = {}
         for i in range(len(subscriptions)):
-             valid_sub[subscriptions[i]] = (i+1,c.G1.order().random()) #i+1 because 0 is for the user
+             valid_sub[subscriptions[i]] = (i+1, c.G1.order().random()) #i+1 because 0 is for the user
         
-        att = list(valid_sub.values()) + [(0,None)]
-        (sk_s,pk_s) = c.generate_key(att)
+        att = list(valid_sub.values()) + [(0, None)]
+        (sk_s, pk_s) = c.generate_key(att)
         
-        return (jsonpickle.encode((sk_s,valid_sub)),jsonpickle.encode(pk_s))
+        return (jsonpickle.encode((sk_s, valid_sub)),jsonpickle.encode(pk_s)).encode()
         
 
     def process_registration(
@@ -79,33 +75,28 @@ class Server:
                 credential with this response).
         """
         
-        (s_sk,valid_sub) = jsonpickle.decode(server_sk)
+        (s_sk, valid_sub) = jsonpickle.decode(server_sk)
         self.valid_sub = valid_sub
         
         s_pk: c.PublicKey = jsonpickle.decode(server_pk)
         
+        # If a user's subscriptions is not in the list of valid attributes, return None
+        valid_keys = list(self.valid_sub.keys())
+        is_valid = all(sub in valid_keys for sub in subscriptions)
+        if not is_valid:
+            return jsonpickle.encode(None).encode()
+        
         # Issuer attributes
-        iss_att = [att for (k,att) in valid_sub if k not in subscriptions]
+        iss_att = [att for (k, att) in valid_sub if k not in subscriptions]
         
         # Recover C and PI, decode
         req: c.IssueRequest  = jsonpickle.decode(issuance_request)
-        #separation = bytearray('separation','utf-8')
-        #idx = req.find(separation)
-        #C_enc = req[0:idx]
-        #C = c.G1Element.from_binary(C_enc.decode('utf-8'))        
-        #PI_enc = req[idx+len(separation):len(issuance_request)]
-        #PI = PI_enc.decode('utf-8')
+        if req == None:
+            return jsonpickle.encode(None).encode()
         
-        signed_req = c.sign_issue_request(s_sk,s_pk,req,iss_att)
-        
-        # Encode response
-        #sig1_enc = c.G1Element.to_binary(sig1)
-        #sig2_enc = c.G1Element.to_binary(sig2)
-        #issuer_attributes_enc = bytearray(str(issuer_attributes),'utf-8')
-        #separation1 = bytearray('separation1','utf-8')
-        #separation2 = bytearray('separation2','utf-8')
-        
-        return jsonpickle.encode(signed_req)
+        signed_req = c.sign_issue_request(s_sk, s_pk, req, iss_att)
+                
+        return jsonpickle.encode(signed_req).encode()
 
     def check_request_signature(
         self,
@@ -125,11 +116,28 @@ class Server:
         Returns:
             whether a signature is valid
         """
-        ###############################################
-        # TODO: Complete this function.
-        ###############################################
-        raise NotImplementedError
-
+        
+        # Deserialization
+        s_pk = jsonpickle.decode(server_pk)
+        signature = jsonpickle.decode(signature)
+        if signature == None:
+            print("Signature is None")
+            return False
+        
+        # Check the proof
+        (client_signature, c_pk, disc_proof) = signature        
+        proof_res = c.verify_disclosure_proof(s_pk, disc_proof)
+        if not proof_res:
+            print("Wrong proof")
+            return False
+        
+        # Check the signature
+        signature_res = c.verify(c_pk, client_signature, [message])
+        if not signature_res:
+            print("Wrong signature")
+            return False
+        
+        return True
 
 class Client:
     """Client"""
@@ -138,7 +146,8 @@ class Client:
         """
         Client constructor.
         """
-
+        self.pk: c.PublicKey = None
+        
     def prepare_registration(
             self,
             server_pk: bytes,
@@ -159,30 +168,26 @@ class Client:
                 from prepare_registration to proceed_registration_response.
                 You need to design the state yourself.
         """
-        # Secret key of client
-        sk_c = c.G1.order().random()
-        user_att = [(0,sk_c)]
+        # Deserialization
+        server_pk = jsonpickle.decode(server_pk)
+        (_, Y, _, _, _) = server_pk # Need the number of attributes to generate client's keys (length of Y)
         
-        valid_sub: SubscriptionMap = {}
-        for i in range(len(subscriptions)):
-             valid_sub[subscriptions[i]] = (i,c.G1.order().random())
+        # Secret key of client
+        (sk_c, pk_c) = c.generate_key(Y)
+        self.pk = pk_c
+        
+        # User attributes : client's secret key (with key 0)
+        user_att = [(0, sk_c)]
         
         # Create the request
-        server_pk = jsonpickle.decode(server_pk)
-        (req,t) = c.create_issue_request(server_pk,user_att)
+        (req, t) = c.create_issue_request(server_pk, user_att)
         
         # Save t and the secret key in the state
         state = (t,sk_c)
         
-        # Request into jsonpickle, add a separation to distinguish C and PI
-        #(C,PI) = req
-        #PI_byte = bytearray(PI,'utf-8')
-        #separation = bytearray('separation','utf-8')
-        #C_byte = c.G1Element.to_binary(C) #bytearray(str(c.G1Element.to_binary(C)),'utf-8')
-        
         req = jsonpickle.encode(req)
         
-        return (req,state)
+        return (req,state).encode()
 
     def process_registration_response(
             self,
@@ -201,36 +206,19 @@ class Client:
         Return:
             credentials: create an attribute-based credential for the user
         """
+        
         # Get private state
         (t,sk) = private_state
         
-        # Parse server response
-        ((sig1,sig2),iss_att) = jsonpickle.decode(server_response)
-        #separation1 = bytearray('separation1','utf-8')
-        #separation2 = bytearray('separation2','utf-8')
-        #idx1 = server_response.find(separation1)
-        #idx2 = server_response.find(separation2)        
-        #sig1 = server_response[0:idx1]
-        #sig2 = server_response[idx1+len(separation1):idx2]
-        #iss_att = server_response[idx2+len(separation2):len(server_response)]
-        
-        # Decode server response
-        #sig1 = c.G1Element.to_binary(sig1.decode('utf-8'))
-        #sig2 = c.G1Element.to_binary(sig2.decode('utf-8'))
-        #iss_att = eval(iss_att.decode('utf-8'))
-        
+        # Parse server response, if None returns None
+        response_dec = jsonpickle.decode(server_response)
+        if response_dec == None:
+            return jsonpickle.encode(None).encode()
+                
         # Obtain credentials
-        credential = c.obtain_credential(server_pk,((sig1,sig2),iss_att),t,self.user_att)
-        self.credential = (credential,sk)
+        credential = c.obtain_credential(server_pk, response_dec, t, [(0, sk)])
         
-        ((sig1,sig2),att) = credential
-        
-        #sig1_byte = c.G1Element.to_binary(sig1)
-        #sig2_byte = c.G1Element.to_binary(sig2)
-        #att_byte = bytearray(str(att),'utf-8')
-        #cred_bytes = sig1_byte + separation1 + sig2_byte + separation2 + att_byte
-        
-        return jsonpickle.encode(cred_bytes)
+        return jsonpickle.encode(credential).encode()
         
     def sign_request(
             self,
@@ -250,7 +238,23 @@ class Client:
         Returns:
             A message's signature (serialized)
         """
-        ###############################################
-        # TODO: Complete this function.
-        ###############################################
-        raise NotImplementedError
+        
+        server_pk = jsonpickle.decode(server_pk)
+        
+        credentials = jsonpickle.decode(credentials)
+        if credentials == None:
+            return jsonpickle.encode(None).encode()
+        
+        (sig, att) = credentials
+        
+        # Issuer attributes = Every attributes except 0 (client's one)
+        iss_att = att.copy()
+        del iss_att[0]
+        
+        disc_proof = c.create_disclosure_proof(server_pk, credentials, iss_att)
+        
+        c_sk = att[0] # The attribute with key 0 is the client's secret key
+
+        client_signature = c.sign(c_sk, [message])
+        
+        return jsonpickle.encode((client_signature, self.pk, disc_proof)).encode()
