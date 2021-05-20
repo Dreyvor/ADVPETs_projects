@@ -9,7 +9,7 @@ from serialization import jsonpickle
 import credential as c
 
 # Type aliases
-State = Tuple[c.Bn, c.SecretKey]
+State = c.Bn #Tuple[c.Bn, c.SecretKey]
 
 SubscriptionMap = Dict[str, Tuple[int, c.Attribute]]
 
@@ -46,8 +46,8 @@ class Server:
         valid_sub: SubscriptionMap = {}
         for i in range(len(subscriptions)):
              valid_sub[subscriptions[i]] = (i+1, c.G1.order().random()) #i+1 because 0 is for the user
-
-        att = list(valid_sub.values()) + [{0: None}]
+        
+        att = [(0, None)] + list(valid_sub.values())
         (sk_s, pk_s) = c.generate_key(att)
         
         return (jsonpickle.encode((sk_s, valid_sub)).encode(), jsonpickle.encode(pk_s).encode())
@@ -78,26 +78,25 @@ class Server:
         (s_sk, valid_sub) = jsonpickle.decode(server_sk)
         self.valid_sub = valid_sub
         
-        s_pk: c.PublicKey = jsonpickle.decode(server_pk)
+        s_pk = jsonpickle.decode(server_pk)
         
-        # If a user's subscriptions is not in the list of valid attributes, return None
+        # If a user's subscriptions is not in the list of valid attributes return None
         valid_keys = list(self.valid_sub.keys())
         is_valid = all(sub in valid_keys for sub in subscriptions)
         if not is_valid:
+            print("Item in subscription not valid")
             return jsonpickle.encode(None).encode()
         
         # Issuer attributes, create an AttributeMap from valid subscriptions
-        iss_att = {att[0]:att[1] for (k, att) in valid_sub.items() if k not in subscriptions}
+        iss_att = {att[0]:att[1] for (k, att) in self.valid_sub.items() if k in subscriptions}        
         
         # Recover C and PI, decode
         req: c.IssueRequest  = jsonpickle.decode(issuance_request)
         if req == None:
             return jsonpickle.encode(None).encode()
-        
+
         signed_req = c.sign_issue_request(s_sk, s_pk, req, iss_att)
         
-        (_,iss_att2) = signed_req
-                
         return jsonpickle.encode(signed_req).encode()
 
     def check_request_signature(
@@ -118,7 +117,7 @@ class Server:
         Returns:
             whether a signature is valid
         """
-        
+        print("R_A : ", revealed_attributes)
         # Deserialization
         s_pk = jsonpickle.decode(server_pk)
         signature = jsonpickle.decode(signature)
@@ -126,9 +125,20 @@ class Server:
             print("Signature is None")
             return False
         
+        is_valid = all(sub in self.valid_sub.keys() for sub in revealed_attributes)
+        if not is_valid:
+            print("Cannot request this attribute")
+            return False
+        
         # Check the proof
-        (client_signature, c_pk, disc_proof) = signature        
-        proof_res = c.verify_disclosure_proof(s_pk, disc_proof)
+        (client_signature, c_pk, disc_proof) = signature
+        
+        # Cast attribute keys in int since jsonpickle changed them to str
+        ((sigp1, sigp2), PI) = disc_proof
+        
+        revealed_att_map = {att[0]:att[1] for (sub, att) in self.valid_sub.items() if sub in revealed_attributes}
+        print("RAM : ", revealed_att_map)
+        proof_res = c.verify_disclosure_proof(s_pk, disc_proof, revealed_att_map)
         if not proof_res:
             print("Wrong proof")
             return False
@@ -149,6 +159,7 @@ class Client:
         Client constructor.
         """
         self.pk: c.PublicKey = None
+        self.sk: c.SecretKey = None
         
     def prepare_registration(
             self,
@@ -177,6 +188,7 @@ class Client:
         # Secret key of client
         (sk_c, pk_c) = c.generate_key(Y)
         self.pk = pk_c
+        self.sk = sk_c
         
         # User attributes : client's secret key (with key 0)
         (x,_,_) = sk_c
@@ -185,12 +197,10 @@ class Client:
         # Create the request
         (req, t) = c.create_issue_request(server_pk, user_att)
         
-        # Save t and the secret key in the state
-        state = (t,sk_c)
+        # Save t in the state
+        state = t
         
-        req = jsonpickle.encode(req)
-        
-        return (req.encode(), state)
+        return (jsonpickle.encode(req).encode(), state)
 
     def process_registration_response(
             self,
@@ -211,7 +221,7 @@ class Client:
         """
         
         # Get private state
-        (t,sk) = private_state
+        t = private_state
         
         # Deserialize server response, if None returns None
         server_pk = jsonpickle.decode(server_pk)
@@ -223,11 +233,11 @@ class Client:
         ((sig1,sig2),iss_att) = response_dec
         iss_att = {int(key):att for (key,att) in iss_att.items()}
         response_dec = ((sig1, sig2), iss_att)
-        
+                
         # Obtain credentials
-        (x,_,_) = sk
-        credential = c.obtain_credential(server_pk, response_dec, t, {0: x})
-        
+        (x,_,_) = self.sk
+        user_att = {0: x}
+        credential = c.obtain_credential(server_pk, response_dec, t, user_att, iss_att)
         return jsonpickle.encode(credential).encode()
         
     def sign_request(
@@ -256,15 +266,15 @@ class Client:
             return jsonpickle.encode(None).encode()
         
         (sig, att) = credentials
+                
+        # User attributes is the one with key 0 
+        hidden_att = {int(k):v for (k,v) in att.items() if int(k)==0}
         
-        # Issuer attributes = Every attributes except 0 (client's one)
-        iss_att = att.copy()
-        del iss_att[0]
+        # Create discolsure proof using its credentials
+        credentials = (sig, att)
+        disc_proof = c.create_disclosure_proof(server_pk, credentials, hidden_att)
         
-        disc_proof = c.create_disclosure_proof(server_pk, credentials, iss_att)
-        
-        c_sk = att[0] # The attribute with key 0 is the client's secret key
-
-        client_signature = c.sign(c_sk, [message])
+        # Sign the message using PS scheme
+        client_signature = c.sign(self.sk, [message])
         
         return jsonpickle.encode((client_signature, self.pk, disc_proof)).encode()

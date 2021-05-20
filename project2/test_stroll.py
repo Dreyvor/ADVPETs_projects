@@ -1,135 +1,93 @@
 from serialization import jsonpickle
 from stroll import Server, Client
 
+#all_subscriptions = ['appartment_block', 'bar', 'cafeteria', 'club', 'company', 'dojo', 'gym', 'laboratory', 'office',
+#                     'restaurant', 'supermarket', 'villa']
 
-def test_full_stroll_run():
+def test_run():
 
-    subscriptions = ['appartment_block', 'bar', 'cafeteria']
-
-    #### SERVER SIDE
-    pair = Server.generate_ca(subscriptions)
-    server_sk = pair[0]
-    server_pk = pair[1]
+    subscriptions = ['appartment_block', 'bar','cafeteria']
 
     SERVER = Server()
-
-    #### CLIENT SIDE
-
+    (s_sk, s_pk) = Server.generate_ca(subscriptions)
+    
     CLIENT = Client()
-    username = "test_client"
-
-    client_subs = ['bar', 'cafeteria']
-    issue_request, state = CLIENT.prepare_registration(server_pk, username, client_subs)
-
-    #### SERVER SIDE
-
-    processed_registration = SERVER.process_registration(server_sk, server_pk, issue_request, username, client_subs)
+    c_subs = ['bar']
+    username = 'client1'
     
-    #### CLIENT SIDE
+    (issue_request, state) = CLIENT.prepare_registration(s_pk, username, c_subs)
 
-    credentials = CLIENT.process_registration_response(server_pk, processed_registration, state)
+    registration = SERVER.process_registration(s_sk, s_pk, issue_request, username, c_subs)
     
-    lat = 46.50448649
-    lon = 6.55963052
-    message = (f"{lat},{lon}").encode("utf-8")
+    credentials = CLIENT.process_registration_response(s_pk, registration, state)
+    
+    message = "46.52345,6.57890".encode('utf-8')
     types = ['bar']
+    request = CLIENT.sign_request(s_pk, credentials, message, types)
 
-    request = CLIENT.sign_request(server_pk, credentials, message, types)
+    assert SERVER.check_request_signature(s_pk, message, types, request)
 
-    #### SERVER SIDE
 
-    assert SERVER.check_request_signature(server_pk, message, types, request)
+def test_sub_not_valid():
 
-'''
-def test_stroll_wrong_sub():
-
-    subscriptions = ['appartment_block', 'bar', 'cafeteria']
-
-    #### SERVER SIDE
-    pair = Server.generate_ca(subscriptions)
-    server_sk = pair[0]
-    server_pk = pair[1]
+    subscriptions = ['appartment_block', 'bar']
 
     SERVER = Server()
-
-    #### CLIENT SIDE
+    (s_sk, s_pk) = Server.generate_ca(subscriptions)
 
     CLIENT = Client()
-    username = "test_client"
-
-    client_subs = ['bar', 'cafeteria']
-    issue_request, state = CLIENT.prepare_registration(server_pk, username, client_subs)
-
-    #### SERVER SIDE
-
-    processed_registration = SERVER.process_registration(server_sk, server_pk, issue_request, username, client_subs)
-
-    #### CLIENT SIDE
-
-    credentials = CLIENT.process_registration_response(server_pk, processed_registration, state)
+    c_subs = ['bar']
+    username = 'client1'
     
-    lat = 46.50448649
-    lon = 6.55963052
-    message = (f"{lat},{lon}").encode("utf-8")
-    types = ['restaurant']
+    (issue_request, state) = CLIENT.prepare_registration(s_pk, username, c_subs)
 
-    request = CLIENT.sign_request(server_pk, credentials, message, types)
+    processed_registration = SERVER.process_registration(s_sk, s_pk, issue_request, username, c_subs)
 
-    #### SERVER SIDE
+    credentials = CLIENT.process_registration_response(s_pk, processed_registration, state)
+    
+    message = "46.52345,6.57890".encode('utf-8')
+    types = ['cafeteria'] # not a valid subscription
 
-    assert not SERVER.check_request_signature(server_pk, message, types, request)
+    request = CLIENT.sign_request(s_pk, credentials, message, types)
+
+    assert not SERVER.check_request_signature(s_pk, message, types, request)
 
 
-def test_stroll_connect_with_stolen_disclosure_proof():
+def test_wrong_disclosure_proof():
 
-    subscriptions = ['appartment_block', 'bar', 'cafeteria']
-
-    #### SERVER SIDE
-    pair = Server.generate_ca(subscriptions)
-    server_sk = pair[0]
-    server_pk = pair[1]
+    subscriptions = ['appartment_block', 'bar']
 
     SERVER = Server()
-
-    #### CLIENT SIDE
-
-    CLIENT = Client()
-    username = "test_client"
-
-    client_subs = ['bar', 'cafeteria']
-    issue_request, state = CLIENT.prepare_registration(server_pk, username, client_subs)
-
-    BAD_CLIENT = Client()
-    username2 = "bad_client"
-
-
-    issue_request2, state2 = BAD_CLIENT.prepare_registration(server_pk, username2, client_subs)
-
-    #### SERVER SIDE
-
-    processed_registration = SERVER.process_registration(server_sk, server_pk, issue_request, username, client_subs)
-    processed_registration2 = SERVER.process_registration(server_sk, server_pk, issue_request2, username2, client_subs)
-
-    #### CLIENT SIDE
-
-    credentials = CLIENT.process_registration_response(server_pk, processed_registration, state)
-    credentials2 = BAD_CLIENT.process_registration_response(server_pk, processed_registration2, state2)
+    (s_sk, s_pk) = Server.generate_ca(subscriptions)
     
-    lat = 46.50448649
-    lon = 6.55963052
-    message = (f"{lat},{lon}").encode("utf-8")
-    types = ['bar']
+    CLIENT1 = Client()
+    c1_subs = ['bar']
+    username1 = 'client1'
 
-    request = CLIENT.sign_request(server_pk, credentials, message, types)
+    CLIENT2 = Client()
+    c2_subs = ['appartment_block']
+    username2 = 'client2'
+    
+    (issue_request1, state1) = CLIENT1.prepare_registration(s_pk, username1, c1_subs)
+    (issue_request2, state2) = CLIENT2.prepare_registration(s_pk, username2, c2_subs)
 
-    #### BAD CLIENT stole disclosure proof and try to request with it
-    request2 = BAD_CLIENT.sign_request(server_pk, credentials2, message, types)
+    registration1 = SERVER.process_registration(s_sk, s_pk, issue_request1, username1, c1_subs)
+    registration2 = SERVER.process_registration(s_sk, s_pk, issue_request2, username2, c2_subs)
 
-    bls_sign2, _ = jsonpickle.decode(request2)
-    _, proof = jsonpickle.decode(request)
+    credentials1 = CLIENT1.process_registration_response(s_pk, registration1, state1)
+    credentials2 = CLIENT2.process_registration_response(s_pk, registration2, state2)
+        
+    message = "46.52345,6.57890".encode('utf-8')
+    types1 = ['bar']
+    types2 = ['appartment_block']
+    
+    request1 = CLIENT2.sign_request(s_pk, credentials1, message, types1)
+    request2 = CLIENT2.sign_request(s_pk, credentials2, message, types2)
 
-    request_forged = jsonpickle.encode((bls_sign2, proof)).encode()
+    (c1_sig, c1_pk, c1_proof) = jsonpickle.decode(request1)
+    (c2_sig, c2_pk, c2_proof) = jsonpickle.decode(request2)
+    
+    # Client 2 uses the disclosure proof of client 1
+    request3 = jsonpickle.encode((c2_sig, c2_pk, c1_proof))
 
-    #### SERVER SIDE
-
-    assert not SERVER.check_request_signature(server_pk, message, types, request_forged)'''
+    assert not SERVER.check_request_signature(s_pk, message, types2, request3)

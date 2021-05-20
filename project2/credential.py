@@ -17,8 +17,6 @@ the functions provided to resemble a more object-oriented interface.
 
 from typing import List, Tuple
 
-from serialization import jsonpickle
-
 from petrelic.multiplicative.pairing import G1, G2, GT
 from petrelic.multiplicative.pairing import G1Element, G2Element
 from petrelic.bn import Bn
@@ -100,19 +98,24 @@ def sign(
 def verify(
         pk: PublicKey,
         signature: Signature,
-        msgs: List[bytes]
+        msgs: List[bytes],
+        att_map: AttributeMap = None
     ) -> bool:
     """ Verify the signature on a vector of messages """
-
+    
     (h,s) = signature
     (g,Y,gt,Xt,Yt) = pk
-    
     Yt = np.array(Yt).flatten()
+    
+    # Select the Yt appropriate for the attributes (using the attribute map)
+    m = np.array([Bn.from_binary(m) for m in msgs])
+    if(att_map != None):
+        idx = [0] + [idx for (idx,val) in att_map.items() if val in m]
+        Yt = Yt[idx] 
     
     if(h == G1.neutral_element):
         return False
     
-    m = np.array([Bn.from_binary(m) for m in msgs])
     ym = Yt ** m
     
     return h.pair(Xt*np.multiply.reduce(ym)) == s.pair(gt)
@@ -146,7 +149,7 @@ def create_issue_request(
     ya = np.multiply.reduce(Yi**ai)
     C = ((g**t) * ya)
 
-    # Compute pi (Fiat-Shamir heuristic), Proof of knowledge
+    # Compute pi (commit to C using Fiat-Shamir heuristic)
     h = bytes(str(pk)+str(C),'utf-8')
     PI = hashlib.sha3_512(h).hexdigest()
     
@@ -163,14 +166,14 @@ def sign_issue_request(
 
     This corresponds to the "Issuer signing" step in the issuance protocol.
     """
-    
+        
     (x,X,y) = sk
     (g,Y,gt,Xt,Yt) = pk
     Y = np.array(Y)
     
     (C,PI) = request
     
-    # Check commitment (Fiat-Shamir heuristic), Check proof of knowledge
+    # Check commitment (Fiat-Shamir heuristic)
     h = bytes(str(pk)+str(C),'utf-8')
     PI_2 = hashlib.sha3_512(h).hexdigest()
     if(PI != PI_2):
@@ -180,7 +183,7 @@ def sign_issue_request(
     # Compute sigma'
     u = G1.order().random()
     sig1 = g ** u
-
+    
     ai = np.array(list(issuer_attributes.values()))
     Yi = np.array(Y[list(issuer_attributes.keys())]).flatten()
     ya = np.multiply.reduce(Yi**ai)
@@ -195,7 +198,8 @@ def obtain_credential(
         pk: PublicKey,
         response: BlindSignature,
         t: Bn, #state from create_issue_request()
-        user_attributes: AttributeMap #to check signature
+        user_attributes: AttributeMap, #to check signature
+        iss_att: AttributeMap = None
     ) -> AnonymousCredential:
     """ Derive a credential from the issuer's response
 
@@ -209,14 +213,14 @@ def obtain_credential(
     
     whole_attributes = {**issuer_attributes, **user_attributes}
     whole_attributes = dict(sorted(whole_attributes.items()))
-
-    #add '0' in front of hex if not even length because bytes.fromhex reads two digits hexa numbers
+    
+    #add '0' in front of hex if not even length because bytes.fromhex() reads two digits hexa numbers
     ai = list(whole_attributes.values())
     ai_hex_pad = ['0'+Bn.hex(a) if len(Bn.hex(a))%2 != 0 else Bn.hex(a) for a in ai]
     ai = [bytes.fromhex(a) for a in ai_hex_pad] 
     
     # If sig is a valid signature for the attributes
-    if(verify(pk,sig,ai)):
+    if(verify(pk,sig,ai,iss_att)):
         return (sig,whole_attributes)
     else:
         print("No credential obtained : could not verify signature")
@@ -236,8 +240,14 @@ def create_disclosure_proof(
     ((sig1,sig2),ai) = credential
     
     # Prepare disclosed attributes
-    disclosed_attributes_keys = [att for att in ai if att not in hidden_attributes]
+    ai = {int(k):v for (k,v) in ai.items()}
+    disclosed_attributes_keys = [int(att) for att in ai if att not in hidden_attributes]
     disclosed_attributes_values = [ai.get(k) for k in disclosed_attributes_keys]
+    
+    #print("D_A_K : ", disclosed_attributes_keys)
+    #print("D_A_V1 : ", disclosed_attributes_values)
+    #print("HA : ", hidden_attributes)
+    #print("AI : ", ai)
     
     t = G1.order().random()
     r = G1.order().random()
@@ -248,22 +258,23 @@ def create_disclosure_proof(
     sigp2 = (sig2*(sig1**t))**r
     sigp = (sigp1, sigp2)
     
-    # PK : with Fiat-Shamir heuristic
+    # PK of the disclosed attributes : with Fiat-Shamir heuristic
     ai_h = np.array(list(hidden_attributes.values()))
     Yti = np.array([Yt[i] for i in list(hidden_attributes.keys())]).flatten()
     e_Yt = np.array([sigp1.pair(yti) for yti in Yti])
 
     sigp1_yit_ai = e_Yt ** ai_h
     p = ((sigp1.pair(gt))**t) * np.multiply.reduce(sigp1_yit_ai) 
-    h = bytes(str(pk)+str(disclosed_attributes_keys)+str(disclosed_attributes_values)+str(p),'utf-8')
-
+    h = bytes(str(pk)+str(disclosed_attributes_values)+str(p),'utf-8')
+    
     PI = hashlib.sha3_512(h).hexdigest()
     
-    return (sigp,(disclosed_attributes_keys,disclosed_attributes_values),PI)
+    return (sigp, PI)
 
 def verify_disclosure_proof(
         pk: PublicKey,
-        disclosure_proof: DisclosureProof
+        disclosure_proof: DisclosureProof,
+        revealed_att: AttributeMap
     ) -> bool:
     """ Verify the disclosure proof
 
@@ -271,8 +282,11 @@ def verify_disclosure_proof(
     """
     
     (g,Y,gt,Xt,Yt) = pk
-    ((sigp1,sigp2),disclosed_attributes,PI) = disclosure_proof
-    (da_keys, da_values) = disclosed_attributes
+    #((sigp1,sigp2),PI) = disclosure_proof
+    #(da_keys, da_values) = disclosed_attributes
+    ((sigp1,sigp2), PI) = disclosure_proof
+    da_keys = list(revealed_att.keys())
+    da_values = list(revealed_att.values())
     
     if(sigp1 == G1.neutral_element):
         return False
@@ -283,7 +297,7 @@ def verify_disclosure_proof(
     e_Yt = np.array([sigp1.pair(yti) for yti in Yti])
     sigp1_yit_ai = e_Yt ** (-ai_d)
     p = sigp2.pair(gt) * np.multiply.reduce(sigp1_yit_ai) / sigp1.pair(Xt)
-    h = bytes(str(pk)+str(da_keys)+str(da_values)+str(p),'utf-8')
+    h = bytes(str(pk)+str(da_values)+str(p),'utf-8')
     PI2 = hashlib.sha3_512(h).hexdigest()
     
     return PI == PI2 
