@@ -117,7 +117,6 @@ class Server:
         Returns:
             whether a signature is valid
         """
-        print("R_A : ", revealed_attributes)
         # Deserialization
         s_pk = jsonpickle.decode(server_pk)
         signature = jsonpickle.decode(signature)
@@ -137,7 +136,6 @@ class Server:
         ((sigp1, sigp2), PI) = disc_proof
         
         revealed_att_map = {att[0]:att[1] for (sub, att) in self.valid_sub.items() if sub in revealed_attributes}
-        print("RAM : ", revealed_att_map)
         proof_res = c.verify_disclosure_proof(s_pk, disc_proof, revealed_att_map)
         if not proof_res:
             print("Wrong proof")

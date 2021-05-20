@@ -244,11 +244,6 @@ def create_disclosure_proof(
     disclosed_attributes_keys = [int(att) for att in ai if att not in hidden_attributes]
     disclosed_attributes_values = [ai.get(k) for k in disclosed_attributes_keys]
     
-    #print("D_A_K : ", disclosed_attributes_keys)
-    #print("D_A_V1 : ", disclosed_attributes_values)
-    #print("HA : ", hidden_attributes)
-    #print("AI : ", ai)
-    
     t = G1.order().random()
     r = G1.order().random()
     while(sig1 ** r == G1.neutral_element): # r cannot be the neutral element
