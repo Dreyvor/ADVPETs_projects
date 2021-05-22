@@ -158,6 +158,7 @@ class Client:
         """
         self.pk: c.PublicKey = None
         self.sk: c.SecretKey = None
+        #TODO: add user_attributes list
         
     def prepare_registration(
             self,

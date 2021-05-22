@@ -230,7 +230,7 @@ def test_verify_disclosure_proof():
     hid_att = ua
     disProof = c.create_disclosure_proof(pk,(sig,aj),hid_att)
     
-    res = c.verify_disclosure_proof(pk,disProof)
+    res = c.verify_disclosure_proof(pk,disProof,ia)
     
     assert res
     
@@ -254,6 +254,6 @@ def test_verify_disclosure_proof_bigNumbers():
     hid_att = ua
     disProof = c.create_disclosure_proof(pk,(sig,aj),hid_att)
     
-    res = c.verify_disclosure_proof(pk,disProof)
+    res = c.verify_disclosure_proof(pk,disProof,ia)
     
     assert res
