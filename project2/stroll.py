@@ -12,10 +12,12 @@ import credential as c
 State = c.Bn #Tuple[c.Bn, c.SecretKey]
 
 SubscriptionMap = Dict[str, Tuple[int, c.Attribute]]
+Sub_users_list = Dict[str, List[str]] #TODO: check if we only need int as key or we also need str
+
+all_possible_subs = ['appartment_block', 'bar', 'cafeteria', 'club', 'company', 'dojo', 'gym', 'laboratory', 'office', 'restaurant', 'supermarket', 'villa']
 
 class Server:
     """Server"""
-
 
     def __init__(self):
         """
@@ -44,10 +46,10 @@ class Server:
         """
         
         valid_sub: SubscriptionMap = {}
-        for i in range(len(subscriptions)):
-             valid_sub[subscriptions[i]] = (i+1, c.G1.order().random()) #i+1 because 0 is for the user
+        for sub in [key for key in subscriptions if ((key in all_possible_subs) and (not key == 'username'))]:
+                valid_sub[sub] = (all_possible_subs.index(sub) + 1, c.G1.order().random()) # "+1" because 0 is for the user
         
-        att = [(0, None)] + list(valid_sub.values())
+        att = [(0, None)] + list(valid_sub.values()) #TODO: check if the 0 causes issues in computation later
         (sk_s, pk_s) = c.generate_key(att)
         
         return (jsonpickle.encode((sk_s, valid_sub)).encode(), jsonpickle.encode(pk_s).encode())
@@ -65,10 +67,9 @@ class Server:
 
         Args:
             server_sk: the server's secret key (serialized)
-            issuance_request: The issuance request (serialized)
+            issuance_request: The issuance req uest (serialized)
             username: username
             subscriptions: attributes
-
 
         Return:
             serialized response (the client should be able to build a
@@ -76,7 +77,9 @@ class Server:
         """
         
         (s_sk, valid_sub) = jsonpickle.decode(server_sk)
-        self.valid_sub = valid_sub
+        
+        if len(self.valid_sub) == 0: # Does not replace the server subs list if it has already been initialized
+            self.valid_sub = valid_sub
         
         s_pk = jsonpickle.decode(server_pk)
         
@@ -84,11 +87,11 @@ class Server:
         valid_keys = list(self.valid_sub.keys())
         is_valid = all(sub in valid_keys for sub in subscriptions)
         if not is_valid:
-            print("Item in subscription not valid")
+            print("Items in subscription not valid")
             return jsonpickle.encode(None).encode()
         
         # Issuer attributes, create an AttributeMap from valid subscriptions
-        iss_att = {att[0]:att[1] for (k, att) in self.valid_sub.items() if k in subscriptions}        
+        iss_att = {att[0]:att[1] for (k, att) in self.valid_sub.items() if k in subscriptions}     
         
         # Recover C and PI, decode
         req: c.IssueRequest  = jsonpickle.decode(issuance_request)
@@ -97,7 +100,7 @@ class Server:
 
         signed_req = c.sign_issue_request(s_sk, s_pk, req, iss_att)
         
-        return jsonpickle.encode(signed_req).encode()
+        return jsonpickle.encode((signed_req, iss_att)).encode()
 
     def check_request_signature(
         self,
@@ -152,12 +155,13 @@ class Server:
 class Client:
     """Client"""
 
-    def __init__(self):
+    def __init__(self, username = None):
         """
         Client constructor.
         """
         self.pk: c.PublicKey = None
         self.sk: c.SecretKey = None
+        self.username: str = username
         #TODO: add user_attributes list
         
     def prepare_registration(
@@ -193,6 +197,8 @@ class Client:
         (x,_,_) = sk_c
         user_att = {0: x}
         
+        if self.username == None: self.username = username
+
         # Create the request
         (req, t) = c.create_issue_request(server_pk, user_att)
         

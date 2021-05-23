@@ -13,64 +13,62 @@ import numpy as np
 # TEST GENKEY, SIG, VERIFY #
 ############################
 def test_gen_sign_verify():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    msg1 = (1, c.Bn(1))
+    msg2 = (2, c.Bn(2))
+    msg3 = (3, c.Bn(3))
+    msg4 = (4, c.Bn(4))
+    msgs = [msg1, msg2, msg3, msg4]
     
-    (sk,pk) = c.generate_key(att)
+    (sk, pk) = c.generate_key(msgs)
     
-    msgs = np.array([b'01',b'02',b'03',b'04']).tolist()
-    (h,s) = c.sign(sk,msgs)
+    sig: c.Signature = c.sign(sk, msgs)
     
-    res = c.verify(pk,(h,s),msgs)
+    res = c.verify(pk, sig, msgs)
 
     assert res
 
 def test_verify_neutral():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    msg1 = (1, c.Bn(1))
+    msg2 = (2, c.Bn(2))
+    msg3 = (3, c.Bn(3))
+    msg4 = (4, c.Bn(4))
+    msgs = [msg1, msg2, msg3, msg4]
     
-    (sk,pk) = c.generate_key(att)
+    (sk,pk) = c.generate_key(msgs)
     
-    msgs = np.array([b'01',b'02',b'03',b'04']).tolist()
-    (h,s) = c.sign(sk,msgs)
+    (h, s) = c.sign(sk, msgs)
     
-    res = c.verify(pk,(c.G1.neutral_element,s),msgs)
+    res = c.verify(pk, (c.G1.neutral_element, s), msgs)
 
     assert not res
     
 def test_verify_wrong_msg():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
-    msgs = np.array([b'01',b'02',b'03',b'04']).tolist() 
+    msgs = [b'01', b'02', b'03', b'04']
     (h,s) = c.sign(sk,msgs)
     
-    msgs = np.array([b'01',b'01',b'03',b'04']).tolist()
+    msgs = [b'01', b'01', b'03', b'04']
     res = c.verify(pk,(h,s),msgs)
 
     assert not res
     
 def test_verify_wrong_sig():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
-    msgs = np.array([b'01',b'02',b'03',b'04']).tolist()
+    msgs = [b'01', b'02', b'03', b'04']
     (h,s) = c.sign(sk,msgs)
     
     sp = c.G1.generator() ** c.G1.order().random()
@@ -87,11 +85,11 @@ def test_verify_wrong_sig():
 # TEST ISSUANCE PROTOCOL #
 ##########################
 def test_request():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -103,11 +101,11 @@ def test_request():
 
 
 def test_sign_request():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -121,11 +119,11 @@ def test_sign_request():
 
 
 def test_sign_request_wrong_commit():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -142,11 +140,11 @@ def test_sign_request_wrong_commit():
     assert res == None
 
 def test_obtain_cred_wrong_sig():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -166,11 +164,11 @@ def test_obtain_cred_wrong_sig():
 
 
 def test_obtain_cred():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -189,11 +187,11 @@ def test_obtain_cred():
 #########################
 
 def test_disclosure_proof():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -211,11 +209,11 @@ def test_disclosure_proof():
  
 
 def test_verify_disclosure_proof():
-    att1 = c.Bn(1)
-    att2 = c.Bn(2)
-    att3 = c.Bn(3)
-    att4 = c.Bn(4)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(1))
+    att2 = (2, c.Bn(2))
+    att3 = (3, c.Bn(3))
+    att4 = (4, c.Bn(4))
+    att = [att1, att2, att3, att4]
     
     (sk,pk) = c.generate_key(att)
     
@@ -235,11 +233,11 @@ def test_verify_disclosure_proof():
     assert res
     
 def test_verify_disclosure_proof_bigNumbers():
-    att1 = c.Bn(100123)
-    att2 = c.Bn(201234)
-    att3 = c.Bn(10321)
-    att4 = c.Bn(31273)
-    att = np.array([att1,att2,att3,att4]).tolist()
+    att1 = (1, c.Bn(100123))
+    att2 = (2, c.Bn(201234))
+    att3 = (3, c.Bn(10321))
+    att4 = (4, c.Bn(31273))
+    att = [att1,att2,att3,att4]
     
     (sk,pk) = c.generate_key(att)
     

@@ -15,7 +15,7 @@ resembles the original scheme definition. However, you are free to restructure
 the functions provided to resemble a more object-oriented interface.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union, Any
 
 from petrelic.multiplicative.pairing import G1, G2, GT
 from petrelic.multiplicative.pairing import G1Element, G2Element
@@ -23,22 +23,21 @@ from petrelic.bn import Bn
 
 import numpy as np
 
-from typing import Dict
-
 import hashlib # for Fiat-Shamir heuristic
 
 # Type hint aliases
 # Feel free to change them as you see fit.
 # Maybe at the end, you will not need aliases at all!
-SecretKey = Tuple[Bn, G1Element, List[Bn]]
-PublicKey = Tuple[G1Element, List[G1Element], G2Element, G2Element, List[G2Element]]
+SecretKey = Tuple[Bn, G1Element, List[Tuple[int, Bn]]]
+PublicKey = Tuple[G1Element, List[Tuple[int, G1Element]], G2Element, G2Element, List[Tuple[int, G2Element]]]
 Signature = Tuple[G1Element, G1Element]
 Attribute = Bn
-AttributeMap = Dict[int, Attribute] 
-IssueRequest = Tuple[G1Element, str]
-BlindSignature = Tuple[Tuple[G1Element, G1Element], AttributeMap]
-AnonymousCredential = Tuple[G1Element, AttributeMap]
-DisclosureProof = Tuple[Tuple[G1Element, G1Element], Tuple[List[int], List[Attribute]], str]
+AttributeMap = List[Tuple[int, Attribute]]
+ProofCommit = Tuple[G1Element, List[Tuple[int, G1Element]], Bn, Bn, List[Tuple[int, Bn]]]
+IssueRequest = Tuple[G1Element, ProofCommit]
+BlindSignature = Tuple[G1Element, G1Element]
+AnonymousCredential = Tuple[Signature, AttributeMap]
+DisclosureProof = Tuple[Signature, AttributeMap, G2Element, List[Tuple[int, G2Element]], Bn, Bn, List[Tuple[int, Bn]]]
 
 
 ######################
@@ -46,12 +45,10 @@ DisclosureProof = Tuple[Tuple[G1Element, G1Element], Tuple[List[int], List[Attri
 ######################
 
 def generate_key(
-        attributes: List[Attribute]
+        attributes: AttributeMap
     ) -> Tuple[SecretKey, PublicKey]:
     """ Generate signer key pair """
-    
-    L = len(attributes)
-    
+
     # Group generators, public
     g = G1.generator()
     gt = G2.generator()
@@ -61,64 +58,57 @@ def generate_key(
     X = g ** x #secret
     Xt = gt ** x #public
     
-    y = np.empty((L,1),dtype=Bn) #secret
-    Y = np.empty((L,1),dtype=G1Element) #public
-    Yt = np.empty((L,1),dtype=G2Element) #public
-    for i in range(L):
-        y[i] = G1.order().random()
-        Y[i] = g ** y[i]
-        Yt[i] = gt ** y[i]
+    y = [(i, G1.order().random()) for i, _ in attributes] # secret
+    Y = [(i, g ** y_i) for i, y_i in y] #public
+    Yt = [(i, gt ** y_i) for i, y_i in y] #public
+
+    sk = (x, X, y)
+    pk = (g, Y, gt, Xt, Yt)
     
-    pk = (g,Y.tolist(),gt,Xt,Yt.tolist())
-    sk = (x,X,y.tolist())
-    
-    return (sk,pk)
+    return (sk, pk)
 
 
 def sign(
         sk: SecretKey,
-        msgs: List[bytes]
-    ) -> Signature:
+        msgs: AttributeMap
+    ) -> Union[Signature, None]:
     """ Sign the vector of messages `msgs` """
     
+    (x,_,y) = sk
+
+    if len(y) < len(msgs):
+        print("ERR: Too much attributes in the msgs to be able to sign.")
+        return None
+
     # h a random generator (check that it is not the neutral element)
     h = G1.generator() ** G1.order().random()
     while(h == G1.neutral_element):
         h = G1.generator() ** G1.order().random()
-    
-    (x,X,y) = sk
-    y = np.array(y).flatten()
-    m = np.array([Bn.from_binary(m) for m in msgs])
-    
-    s = h ** (x+np.add.reduce(y*m))
+        
+    s = h ** (x + sum([y_i * m_i for _, y_i, m_i in idx_zip(y, msgs)]))
 
-    return (h,s)
+    return (h, s)
 
 
 def verify(
         pk: PublicKey,
         signature: Signature,
-        msgs: List[bytes],
-        att_map: AttributeMap = None
+        msgs: AttributeMap,
     ) -> bool:
     """ Verify the signature on a vector of messages """
     
-    (h,s) = signature
-    (_,_,gt,Xt,Yt) = pk
-    Yt = np.array(Yt).flatten()
-    
-    # Select the Yt appropriate for the attributes (using the attribute map)
-    m = np.array([Bn.from_binary(m) for m in msgs])
-    if(att_map != None):
-        idx = [0] + [idx for (idx,val) in att_map.items() if val in m]
-        Yt = Yt[idx] 
-    
-    if(h == G1.neutral_element):
+    (h, s) = signature
+    (_, _, gt, Xt, Yt) = pk
+
+    if h == G1.neutral_element or (len(Yt) < len(msgs)):
         return False
     
-    ym = Yt ** m
+    # Select the Yt appropriate for the attributes
+    Yt = [(idx, val) for idx, val in Yt if idx in [k for k, _ in msgs]]
+        
+    ym = [Yt_i ** m_i for _, Yt_i, m_i in idx_zip(Yt, msgs)]
     
-    return h.pair(Xt*np.multiply.reduce(ym)) == s.pair(gt)
+    return h.pair(Xt * G2.prod(ym)) == s.pair(gt)
     
     
 
@@ -165,7 +155,9 @@ def sign_issue_request(
 
     This corresponds to the "Issuer signing" step in the issuance protocol.
     """
-        
+
+    #TODO: check if valid signature
+
     (_,X,_) = sk
     (g,Y,_,_,_) = pk
     Y = np.array(Y)
@@ -292,3 +284,37 @@ def verify_disclosure_proof(
     PI2 = hashlib.sha3_512(h).hexdigest()
     
     return PI == PI2
+
+
+#############
+## HELPERS ##
+#############
+
+def idx_zip(a: List[Tuple[int, Any]],
+            b: List[Tuple[int, Any]],
+            c: List[Tuple[int, Any]] = None) -> Union[
+    List[Tuple[int, Any, Any]], List[Tuple[int, Any, Any, Any]], None]:
+    """ TODO: Write descritption """
+
+    idx_a = [i for i, _ in a]
+    idx_b = [i for i, _ in b]
+
+    if not idx_a.sort() == idx_b.sort():
+        return None
+
+    a.sort(key = lambda e: e[0])
+    b.sort(key = lambda e: e[0])
+
+    zipped_res = zip(a, b)
+
+    if c is not None:
+        idx_c = [i for i, _ in c]
+        if not idx_c.sort() == idx_a.sort():
+            return None
+
+        c.sort(key=lambda e: e[0])
+        zipped_res = zip(zipped_res, c)
+
+        return [(i, a_i, b_i, c_i) for ((i, a_i), (_, b_i)), (_, c_i) in zipped_res]
+
+    return [(i, a_i, b_i) for (i, a_i), (_, b_i) in zipped_res]
