@@ -91,11 +91,11 @@ def test_request():
     att4 = (4, c.Bn(4))
     att = [att1, att2, att3, att4]
     
-    (sk,pk) = c.generate_key(att)
+    (sk, pk) = c.generate_key(att)
     
-    ua = {0: att1, 2:att3}
+    ua = [(0, att1[1]), (2, att3[1])]
     
-    (request,t) = c.create_issue_request(pk,ua)
+    (request, t) = c.create_issue_request(pk, ua)
 
     assert request != None
 
@@ -109,8 +109,8 @@ def test_sign_request():
     
     (sk,pk) = c.generate_key(att)
     
-    ua = {0: att1, 2:att3}
-    ia = {1: att2, 3:att4}
+    ua = [(0, att1[1]), (2, att3[1])]
+    ia = [(1, att2[1]), (3, att4[1])]
     
     (request,t) = c.create_issue_request(pk,ua)
     ((sig1,sig2),ai) = c.sign_issue_request(sk,pk,request,ia)

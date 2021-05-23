@@ -23,7 +23,7 @@ from petrelic.bn import Bn
 
 import numpy as np
 
-import hashlib # for Fiat-Shamir heuristic
+import hashlib as hlib
 
 # Type hint aliases
 # Feel free to change them as you see fit.
@@ -103,14 +103,12 @@ def verify(
     if h == G1.neutral_element or (len(Yt) < len(msgs)):
         return False
     
-    # Select the Yt appropriate for the attributes
-    Yt = [(idx, val) for idx, val in Yt if idx in [k for k, _ in msgs]]
-        
-    ym = [Yt_i ** m_i for _, Yt_i, m_i in idx_zip(Yt, msgs)]
+    # Select the Yt appropriate for the attributes        
+    ym = [Yt_i ** m_i for _, Yt_i, m_i in filterY(Yt, msgs)]
     
     return h.pair(Xt * G2.prod(ym)) == s.pair(gt)
-    
-    
+
+
 
 #################################
 ## ATTRIBUTE-BASED CREDENTIALS ##
@@ -120,29 +118,46 @@ def verify(
 def create_issue_request(
         pk: PublicKey,
         user_attributes: AttributeMap
-    ) -> Tuple[IssueRequest,Bn]:
+    ) -> Tuple[IssueRequest, Bn]:
     """ Create an issuance request
 
     This corresponds to the "user commitment" step in the issuance protocol.
 
     *Warning:* You may need to pass state to the `obtain_credential` function.
-    """    
+    """
+
     (g,Y,_,_,_) = pk
-    Y = np.array(Y)
     
     # Compute C
     t = G1.order().random() # will stay secret at client-side
 
-    ai = np.array(list(user_attributes.values()))
-    Yi = np.array(Y[list(user_attributes.keys())]).flatten()
-    ya = np.multiply.reduce(Yi**ai)
-    C = ((g**t) * ya)
+    ya = G1.prod([Yi ** ai for _, Yi, ai in filterY(Y, user_attributes)])
 
-    # Compute pi (commit to C using Fiat-Shamir heuristic)
-    h = bytes(str(pk)+str(C),'utf-8')
-    PI = hashlib.sha3_512(h).hexdigest()
-    
-    return ((C,PI),t)
+    challenge = ((g ** t) * ya)
+
+    # Generate the zkp
+    # pick random big numbers for t and for all attributes
+    rnd_t = G1.order().random()
+    Rnd_t = g ** rnd_t
+
+    rnd_is = [(i, G1.order().random()) for i, _ in user_attributes]
+    Rnd_is = [(i, Y_i ** rnd_i) for i, Y_i, rnd_i in filterY(Y, rnd_is)]
+
+    # Create the challenge
+    h_Rnd_t = hash_sha(Rnd_t)
+    h_pk = hash_pk(pk)
+    h_Rnd_is = hash_Rnd_is(Rnd_is)
+    h_commit = hash_sha(challenge)
+
+    challenge = Bn(abs(h_Rnd_t + h_pk + h_Rnd_is + h_commit))
+
+    # Answers to challenge
+    s_t = rnd_t + challenge * t
+    s_is = [(i, rnd_i + challenge * a_i) for i, rnd_i, a_i in idx_zip(rnd_is, user_attributes)]
+
+    zkp = Rnd_t, Rnd_is, challenge, s_t, s_is
+
+    return ((challenge, zkp), t)
 
 
 def sign_issue_request(
@@ -150,7 +165,7 @@ def sign_issue_request(
         pk: PublicKey,
         request: IssueRequest,
         issuer_attributes: AttributeMap
-    ) -> BlindSignature:
+    ) -> Union[BlindSignature, None]:
     """ Create a signature corresponding to the user's request
 
     This corresponds to the "Issuer signing" step in the issuance protocol.
@@ -160,13 +175,12 @@ def sign_issue_request(
 
     (_,X,_) = sk
     (g,Y,_,_,_) = pk
-    Y = np.array(Y)
     
-    (C,PI) = request
+    (C, PI) = request
     
     # Check commitment (Fiat-Shamir heuristic)
     h = bytes(str(pk)+str(C),'utf-8')
-    PI_2 = hashlib.sha3_512(h).hexdigest()
+    PI_2 = hlib.sha3_512(h).hexdigest()
     if(PI != PI_2):
         print("Cannot sign issue : could not verify proof of pi with respect to commitment C")
         return None
@@ -290,6 +304,29 @@ def verify_disclosure_proof(
 ## HELPERS ##
 #############
 
+def hash_sha(a):
+    """ TODO: Write descritption """
+    return int.from_bytes(hlib.sha3_512(str(a).encode()).digest(), 'big')
+
+def hash_Rnd_is(Rnd_is: Union[List[Tuple[int, G1Element]], List[Tuple[int, G2Element]]]) -> int:
+    """ TODO: Write descritption """
+    return sum([hash_sha(Rnd_i) for _, Rnd_i in Rnd_is])
+
+def hash_pk(pk: PublicKey) -> int:
+    """ TODO: Write descritption """
+    (g, Y, gt, Xt, Yt) = pk
+
+    c = hash_sha(g) + hash_sha(gt) + hash_sha(Xt)
+
+    for e in Y:
+        c += hash_sha(e)
+
+    for e in Yt:
+        c += hash_sha(e)
+
+    return c
+
+
 def idx_zip(a: List[Tuple[int, Any]],
             b: List[Tuple[int, Any]],
             c: List[Tuple[int, Any]] = None) -> Union[
@@ -318,3 +355,39 @@ def idx_zip(a: List[Tuple[int, Any]],
         return [(i, a_i, b_i, c_i) for ((i, a_i), (_, b_i)), (_, c_i) in zipped_res]
 
     return [(i, a_i, b_i) for (i, a_i), (_, b_i) in zipped_res]
+
+def filterY(Y: Union[List[Tuple[int, G1Element]], List[Tuple[int, G2Element]]], attributes: AttributeMap) -> Union[
+    List[Tuple[int, G1Element, Bn]], List[Tuple[int, G2Element, Bn]]]:
+    """TODO: Write description"""
+    filtered_Y = [(i, Y_i) for i, Y_i in Y if i in [k for k, _ in attributes]]
+    return idx_zip(filtered_Y, attributes)
+
+def generate_zkp_prover_side(
+        pk: PublicKey,
+        t: Bn,
+        user_attributes: AttributeMap,
+        commitment: G1Element) -> ProofCommit:
+    """TODO: Write description"""
+
+    (g, Y, gt, Xt, Yt) = pk
+
+    # pick random big numbers for t and for all attributes
+    rnd_t = G1.order().random()
+    Rnd_t = g ** rnd_t
+
+    rnd_is = [(i, G1.order().random()) for i, _ in user_attributes]
+    Rnd_is = [(i, Y_i ** rnd_i) for i, Y_i, rnd_i in filterY(Y, rnd_is)]
+
+    # Create the challenge
+    h_Rnd_t = hash_sha(Rnd_t)
+    h_pk = hash_pk(pk)
+    h_Rnd_is = hash_Rnd_is(Rnd_is)
+    h_commit = hash_sha(commitment)
+
+    challenge = Bn(abs(h_Rnd_t + h_pk + h_Rnd_is + h_commit))
+
+    # Answers to challenge
+    s_t = rnd_t + challenge * t
+    s_is = [(i, rnd_i + challenge * a_i) for i, rnd_i, a_i in idx_zip(rnd_is, user_attributes)]
+
+    return Rnd_t, Rnd_is, challenge, s_t, s_is
