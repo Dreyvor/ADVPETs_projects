@@ -204,72 +204,69 @@ def test_obtain_cred():
 # TEST SHOWING PROTOCOL #
 #########################
 
-def test_disclosure_proof():
-    att1 = (1, c.Bn(1))
-    att2 = (2, c.Bn(2))
-    att3 = (3, c.Bn(3))
-    att4 = (4, c.Bn(4))
-    att = [att1, att2, att3, att4]
-    
-    (sk,pk) = c.generate_key(att)
-    
-    ua = {0: att1, 2:att3}
-    ia = {1: att2, 3:att4}
-    
-    (request,t) = c.create_issue_request(pk,ua)
-    ((sig1,sig2),ai) = c.sign_issue_request(sk,pk,request,ia)
-    (sig,aj) = c.obtain_credential(pk,((sig1,sig2),ai),t,ua)
-    
-    hid_att = {0: att1}
-    disProof = c.create_disclosure_proof(pk,(sig,aj),hid_att)
-    
-    assert disProof != None
- 
+def test_create_verify_disclosure_proof():
+    subscription_map = {}
+    subscription_map['a'] = (1, c.Bn(1))
+    subscription_map['b'] = (2, c.Bn(2))
+    subscription_map['c'] = (3, c.Bn(3))
+    subscription_map['d'] = (4, c.Bn(4))
 
-def test_verify_disclosure_proof():
-    att1 = (1, c.Bn(1))
-    att2 = (2, c.Bn(2))
-    att3 = (3, c.Bn(3))
-    att4 = (4, c.Bn(4))
-    att = [att1, att2, att3, att4]
+    attributes = list(subscription_map.values())
+
+    (sk,pk) = c.generate_key(attributes)
     
-    (sk,pk) = c.generate_key(att)
+    ua_str = ['a', 'd']
+    ua = [subscription_map[c] for c in ua_str]
+
+    ia_str = ['b', 'c']
+    ia = [subscription_map[c] for c in ia_str]
     
-    ua = {0: att1, 2:att3}
-    ia = {1: att2, 3:att4}
+    (request, t) = c.create_issue_request(pk, ua)
+    response = c.sign_issue_request(sk, pk, request, ia_str, subscription_map)
+    anon_cred = c.obtain_credential(pk, response, t, attributes)
+    assert anon_cred != None
     
-    (request,t) = c.create_issue_request(pk,ua)
-    ((sig1,sig2),ai) = c.sign_issue_request(sk,pk,request,ia)
-    (sig,aj) = c.obtain_credential(pk,((sig1,sig2),ai),t,ua)
+    hid_att_str = ['b', 'a', 'd']
+    hid_att = [subscription_map[e] for e in hid_att_str]
+
+    # Create disclosure proof
+    disProof = c.create_disclosure_proof(pk, anon_cred, hid_att)
+    assert disProof != None
     
-    
-    hid_att = ua
-    disProof = c.create_disclosure_proof(pk,(sig,aj),hid_att)
-    
-    res = c.verify_disclosure_proof(pk,disProof,ia)
-    
-    assert res
+    # Verify disclosure proof
+    ret_code = c.verify_disclosure_proof(pk, disProof, hid_att)
+    assert ret_code 
+
     
 def test_verify_disclosure_proof_bigNumbers():
-    att1 = (1, c.Bn(100123))
-    att2 = (2, c.Bn(201234))
-    att3 = (3, c.Bn(10321))
-    att4 = (4, c.Bn(31273))
-    att = [att1,att2,att3,att4]
+    subscription_map = {}
+    subscription_map['a'] = (1, c.Bn(100123))
+    subscription_map['b'] = (2, c.Bn(201234))
+    subscription_map['c'] = (3, c.Bn(10321))
+    subscription_map['d'] = (4, c.Bn(31273))
+
+    attributes = list(subscription_map.values())
+
+    (sk,pk) = c.generate_key(attributes)
     
-    (sk,pk) = c.generate_key(att)
+    ua_str = ['d', 'a']
+    ua = [subscription_map[c] for c in ua_str]
+
+    ia_str = ['b', 'c']
+    ia = [subscription_map[c] for c in ia_str]
     
-    ua = {0: att1, 2:att3}
-    ia = {1: att2, 3:att4}
+    (request, t) = c.create_issue_request(pk, ua)
+    response = c.sign_issue_request(sk, pk, request, ia_str, subscription_map)
+    anon_cred = c.obtain_credential(pk, response, t, attributes)
+    assert anon_cred != None
     
-    (request,t) = c.create_issue_request(pk,ua)
-    ((sig1,sig2),ai) = c.sign_issue_request(sk,pk,request,ia)
-    (sig,aj) = c.obtain_credential(pk,((sig1,sig2),ai),t,ua)
+    hid_att_str = ['d', 'a', 'c']
+    hid_att = [subscription_map[e] for e in hid_att_str]
+
+    # Create disclosure proof
+    disProof = c.create_disclosure_proof(pk, anon_cred, hid_att)
+    assert disProof != None
     
-    
-    hid_att = ua
-    disProof = c.create_disclosure_proof(pk,(sig,aj),hid_att)
-    
-    res = c.verify_disclosure_proof(pk,disProof,ia)
-    
-    assert res
+    # Verify disclosure proof
+    ret_code = c.verify_disclosure_proof(pk, disProof, hid_att)
+    assert ret_code 

@@ -177,7 +177,7 @@ def obtain_credential(
         pk: PublicKey,
         response: BlindSignature,
         t: Bn, #state from create_issue_request()
-        user_attributes: AttributeMap, #to check signature
+        attributes: AttributeMap, #to check signature
     ) -> Union[AnonymousCredential, None]:  
     """ Derive a credential from the issuer's response
 
@@ -189,11 +189,11 @@ def obtain_credential(
     sig = (sigp1, sigp2/(sigp1**t))
         
     # If sig is not a valid signature for the attributes, then return an error
-    if not verify(pk, sig, user_attributes) or (sigp1 == G1.unity()):
+    if not verify(pk, sig, attributes) or (sigp1 == G1.unity()):
         print("ERR: No credential obtained: could not verify signature")
         return None
 
-    return (sig, user_attributes)
+    return (sig, attributes)
 
 
 ######################
@@ -207,9 +207,11 @@ def create_disclosure_proof(
     ) -> DisclosureProof:
     """ Create a disclosure proof """
     
-    (_,_,gt,_,Yt) = pk
-    ((sig1,sig2),ai) = credential
+    (g, Y, gt, Xt, Yt) = pk
+    (sig, ais) = credential
+    (sig1, sig2) = sig 
     
+    # Generate both sigma prime and combine them to generate a randomized signature
     t = G1.order().random()
     r = G1.order().random()
     while(sig1 ** r == G1.neutral_element): # r cannot be the neutral element
@@ -220,51 +222,75 @@ def create_disclosure_proof(
     sigp = (sigp1, sigp2)
 
     # Prepare disclosed attributes
-    ai = {int(k):v for (k,v) in ai.items()}
-    disclosed_attributes_keys = [int(att) for att in ai if att not in hidden_attributes]
-    disclosed_attributes_values = [ai.get(k) for k in disclosed_attributes_keys]
-    
-    # PK of the disclosed attributes : with Fiat-Shamir heuristic
-    ai_h = np.array(list(hidden_attributes.values()))
-    Yti = np.array([Yt[i] for i in list(hidden_attributes.keys())]).flatten()
-    e_Yt = np.array([sigp1.pair(yti) for yti in Yti])
+    hidden_attributes_idx = [i for i, _ in hidden_attributes]
+    disclosed_attributes = [(i, a_i) for i, a_i in ais if i not in hidden_attributes_idx]
 
-    sigp1_yit_ai = e_Yt ** ai_h
-    p = ((sigp1.pair(gt))**t) * np.multiply.reduce(sigp1_yit_ai) 
-    h = bytes(str(pk)+str(disclosed_attributes_values)+str(p),'utf-8')
-    
-    PI = hashlib.sha3_512(h).hexdigest()
-    
-    return (sigp, PI)
+    ### ZKP for the attributes disclosure, prover side
+    # pick random big numbers for t and for all hidden attributes
+    rnd_t = G2.order().random()
+    Rnd_t = gt ** rnd_t
+
+    rnd_is = [(i, G2.order().random()) for i, _ in hidden_attributes]
+    Rnd_is = [(i, sigp1 ** x) for i, x in rnd_is]
+
+    # Create the challenge
+    h_Rnd_t = hash_sha(Rnd_t)
+    h_pk = hash_pk(pk)
+    h_Rnd_is = hash_Rnd_is(Rnd_is)
+    h_disclosed_atts = sum([hash_sha(a_i) for _, a_i in disclosed_attributes])
+    h_sigp1 = hash_sha(sigp1)
+    h_sigp2 = hash_sha(sigp2)
+    challenge = Bn(abs(h_Rnd_t + h_pk + h_Rnd_is + h_disclosed_atts + h_sigp1 + h_sigp2))
+
+    # compute answer to challenge
+    s_t = rnd_t * challenge + t
+
+    s_is = [(i, rnd_i * challenge + a_i) for i, rnd_i, a_i in idx_zip(rnd_is, hidden_attributes)]
+
+    return (sigp, disclosed_attributes, (Rnd_t, Rnd_is, challenge, s_t, s_is))
+
 
 def verify_disclosure_proof(
         pk: PublicKey,
         disclosure_proof: DisclosureProof,
-        revealed_att: AttributeMap
+        hidden_attributes: AttributeMap
     ) -> bool:
     """ Verify the disclosure proof
 
     Hint: The verifier may also want to retrieve the disclosed attributes
     """
     
-    (_,_,gt,Xt,Yt) = pk
-    ((sigp1,sigp2), PI) = disclosure_proof
-    da_keys = list(revealed_att.keys())
-    da_values = list(revealed_att.values())
+    (g, Y, gt, Xt, Yt) = pk
+    ((sigp1, sigp2), disclosed_attributes, (Rnd_t, Rnd_is, challenge, s_t, s_is)) = disclosure_proof
     
-    if(sigp1 == G1.neutral_element):
+    if sigp1 == G1.unity():
         return False
-    
-    # Verify the PK, (Fiat-Shamir)
-    ai_d = np.array(da_values)
-    Yti = np.array([Yt[i] for i in da_keys]).flatten()
-    e_Yt = np.array([sigp1.pair(yti) for yti in Yti])
-    sigp1_yit_ai = e_Yt ** (-ai_d)
-    p = sigp2.pair(gt) * np.multiply.reduce(sigp1_yit_ai) / sigp1.pair(Xt)
-    h = bytes(str(pk)+str(da_values)+str(p),'utf-8')
-    PI2 = hashlib.sha3_512(h).hexdigest()
-    
-    return PI == PI2
+
+    # check the challenge
+    h_Rnd_t = hash_sha(Rnd_t)
+    h_pk = hash_pk(pk)
+    h_Rnd_is = hash_Rnd_is(Rnd_is)
+    h_disclosed_atts = sum([hash_sha(a_i) for _, a_i in disclosed_attributes])
+    h_sigp1 = hash_sha(sigp1)
+    h_sigp2 = hash_sha(sigp2)
+    c_p = Bn(abs(h_Rnd_t + h_pk + h_Rnd_is + h_disclosed_atts + h_sigp1 + h_sigp2))
+
+    if c_p != challenge:
+        return False
+
+    # check zkp
+    sigma_left = sigp2.pair(gt)
+
+    sigma_right = sigp1.pair((gt ** s_t) / (Rnd_t ** challenge))
+    sigma_right *= sigp1.pair(Xt)
+    sigma_right *= GT.prod([sigp1.pair(Yt_i ** a_i) for _, Yt_i, a_i in filterY(Yt, disclosed_attributes)])
+
+    hid_idx = [idx for idx, _ in hidden_attributes]
+    hidden_Yt = [(i, Yt_i) for i, Yt_i in Yt if i in hid_idx]
+
+    sigma_right *= GT.prod([((sigp1 ** s_i) / Rnd_i ** challenge).pair(Yt_i) for i, s_i, Rnd_i, Yt_i in idx_zip(s_is, Rnd_is, hidden_Yt)])
+
+    return sigma_left == sigma_right
 
 
 #############
@@ -291,8 +317,7 @@ def hash_pk(pk: PublicKey) -> int:
     for e in Yt:
         c += hash_sha(e)
 
-    return c
-
+    return c    
 
 def idx_zip(a: List[Tuple[int, Any]],
             b: List[Tuple[int, Any]],
