@@ -103,7 +103,7 @@ def verify(
     if h == G1.neutral_element or (len(Yt) < len(msgs)):
         return False
     
-    # Select the Yt appropriate for the attributes        
+    # Select the Yt appropriate for the attributes
     ym = [Yt_i ** m_i for _, Yt_i, m_i in filterY(Yt, msgs)]
     
     return h.pair(Xt * G2.prod(ym)) == s.pair(gt)
@@ -133,105 +133,72 @@ def create_issue_request(
 
     ya = G1.prod([Yi ** ai for _, Yi, ai in filterY(Y, user_attributes)])
 
-    challenge = ((g ** t) * ya)
+    commitment = ((g ** t) * ya)
 
     # Generate the zkp
-    # pick random big numbers for t and for all attributes
-    rnd_t = G1.order().random()
-    Rnd_t = g ** rnd_t
+    zkp = generate_zkp_prover_side(pk, t, user_attributes, commitment)
 
-    rnd_is = [(i, G1.order().random()) for i, _ in user_attributes]
-    Rnd_is = [(i, Y_i ** rnd_i) for i, Y_i, rnd_i in filterY(Y, rnd_is)]
-
-    # Create the challenge
-    h_Rnd_t = hash_sha(Rnd_t)
-    h_pk = hash_pk(pk)
-    h_Rnd_is = hash_Rnd_is(Rnd_is)
-    h_commit = hash_sha(challenge)
-
-    challenge = Bn(abs(h_Rnd_t + h_pk + h_Rnd_is + h_commit))
-
-    # Answers to challenge
-    s_t = rnd_t + challenge * t
-    s_is = [(i, rnd_i + challenge * a_i) for i, rnd_i, a_i in idx_zip(rnd_is, user_attributes)]
-
-    zkp = Rnd_t, Rnd_is, challenge, s_t, s_is
-
-    return ((challenge, zkp), t)
+    return ((commitment, zkp), t)
 
 
 def sign_issue_request(
         sk: SecretKey,
         pk: PublicKey,
         request: IssueRequest,
-        issuer_attributes: AttributeMap
+        subscriptions: List[str],
+        server_supported: Dict[str, Tuple[int, Bn]]
     ) -> Union[BlindSignature, None]:
     """ Create a signature corresponding to the user's request
 
     This corresponds to the "Issuer signing" step in the issuance protocol.
     """
 
-    #TODO: check if valid signature
+    if not verify_user_attributes_commit(pk, request):
+        return None
 
     (_,X,_) = sk
     (g,Y,_,_,_) = pk
     
-    (C, PI) = request
+    (C, zkp) = request
     
-    # Check commitment (Fiat-Shamir heuristic)
-    h = bytes(str(pk)+str(C),'utf-8')
-    PI_2 = hlib.sha3_512(h).hexdigest()
-    if(PI != PI_2):
-        print("Cannot sign issue : could not verify proof of pi with respect to commitment C")
-        return None
-    
-    # Compute sigma'
+    # Compute both sigma prime
     u = G1.order().random()
-    sig1 = g ** u
+    sigp1 = g ** u
     
-    ai = np.array(list(issuer_attributes.values()))
-    Yi = np.array(Y[list(issuer_attributes.keys())]).flatten()
-    ya = np.multiply.reduce(Yi**ai)
+    issuer_attributes_for_client = [server_supported[e] for e in subscriptions]
+
+    ya = G1.prod([Yi ** ai for _, Yi, ai in filterY(Y, issuer_attributes_for_client)])
     
-    sig2 = (X*C*ya) ** u
+    sigp2 = (X*C*ya) ** u
     
-    sigp = (sig1,sig2)
-    return (sigp,issuer_attributes)
-    
+    return (sigp1, sigp2)
 
 def obtain_credential(
         pk: PublicKey,
         response: BlindSignature,
         t: Bn, #state from create_issue_request()
         user_attributes: AttributeMap, #to check signature
-        iss_att: AttributeMap = None
-    ) -> AnonymousCredential:
+    ) -> Union[AnonymousCredential, None]:  
     """ Derive a credential from the issuer's response
 
     This corresponds to the "Unblinding signature" step.
     """
     
-    ((sigp1,sigp2),issuer_attributes) = response
+    (sigp1, sigp2) = response
     
     sig = (sigp1, sigp2/(sigp1**t))
-    
-    whole_attributes = {**issuer_attributes, **user_attributes}
-    whole_attributes = dict(sorted(whole_attributes.items()))
-    
-    #add '0' in front of hex if not even length because bytes.fromhex() reads two digits hexa numbers
-    ai = list(whole_attributes.values())
-    ai_hex_pad = ['0'+Bn.hex(a) if len(Bn.hex(a))%2 != 0 else Bn.hex(a) for a in ai]
-    ai = [bytes.fromhex(a) for a in ai_hex_pad] 
-    
-    # If sig is a valid signature for the attributes
-    if(verify(pk, sig, ai, iss_att)):
-        return (sig, whole_attributes)
-    else:
-        print("No credential obtained : could not verify signature")
+        
+    # If sig is not a valid signature for the attributes, then return an error
+    if not verify(pk, sig, user_attributes) or (sigp1 == G1.unity()):
+        print("ERR: No credential obtained: could not verify signature")
         return None
 
+    return (sig, user_attributes)
 
+
+######################
 ## SHOWING PROTOCOL ##
+######################
 
 def create_disclosure_proof(
         pk: PublicKey,
@@ -369,7 +336,7 @@ def generate_zkp_prover_side(
         commitment: G1Element) -> ProofCommit:
     """TODO: Write description"""
 
-    (g, Y, gt, Xt, Yt) = pk
+    (g, Y, _, _, _) = pk
 
     # pick random big numbers for t and for all attributes
     rnd_t = G1.order().random()
@@ -391,3 +358,30 @@ def generate_zkp_prover_side(
     s_is = [(i, rnd_i + challenge * a_i) for i, rnd_i, a_i in idx_zip(rnd_is, user_attributes)]
 
     return Rnd_t, Rnd_is, challenge, s_t, s_is
+
+def verify_user_attributes_commit(
+        pk: PublicKey,
+        request: IssueRequest) -> bool:
+    """ TODO: Write description """
+
+    (g, Y, _, _, _) = pk
+    (commitment, (Rnd_t, Rnd_is, challenge, s_t, s_is)) = request
+
+    h_Rnd_t = hash_sha(Rnd_t)
+    h_pk = hash_pk(pk)
+    h_Rnd_is = hash_Rnd_is(Rnd_is)
+    h_commit = hash_sha(commitment)
+
+    c_p = Bn(abs(h_Rnd_t + h_pk + h_Rnd_is + h_commit))
+
+    if challenge != c_p:
+        return False
+
+    # check proof
+    Rnd_is_mult = G1.prod([Rnd_i for _, Rnd_i in Rnd_is])
+    sig1 = (commitment ** challenge) * Rnd_t * Rnd_is_mult
+
+    sig2 = g ** s_t
+    sig2 *= G1.prod([Y_i ** s_i for _, Y_i, s_i in filterY(Y, s_is)])
+
+    return sig1 == sig2
