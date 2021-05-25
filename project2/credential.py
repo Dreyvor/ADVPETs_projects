@@ -58,7 +58,7 @@ def generate_key(
     X = g ** x #secret
     Xt = gt ** x #public
     
-    y = [(i, G1.order().random()) for i, _ in attributes] # secret
+    y = [(i, G1.order().random()) for i, _ in attributes] #secret
     Y = [(i, g ** y_i) for i, y_i in y] #public
     Yt = [(i, gt ** y_i) for i, y_i in y] #public
 
@@ -208,8 +208,7 @@ def create_disclosure_proof(
     """ Create a disclosure proof """
     
     (g, Y, gt, Xt, Yt) = pk
-    (sig, ais) = credential
-    (sig1, sig2) = sig 
+    ((sig1, sig2), ais) = credential
     
     # Generate both sigma prime and combine them to generate a randomized signature
     t = G1.order().random()

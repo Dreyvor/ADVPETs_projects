@@ -3,18 +3,20 @@ Classes that you need to complete.
 """
 
 from typing import Any, Dict, List, Union, Tuple
+from petrelic.multiplicative.pairing import G1, G2, GT
+from petrelic.bn import Bn
 
-# Optional import
 from serialization import jsonpickle
 import credential as c
 
 # Type aliases
-State = c.Bn #Tuple[c.Bn, c.SecretKey]
+State = Tuple[Bn, Bn]
 
 SubscriptionMap = Dict[str, Tuple[int, c.Attribute]]
-Sub_users_list = Dict[str, List[str]] #TODO: check if we only need int as key or we also need str
 
-all_possible_subs = ['appartment_block', 'bar', 'cafeteria', 'club', 'company', 'dojo', 'gym', 'laboratory', 'office', 'restaurant', 'supermarket', 'villa']
+all_possible_subs = ['appartment_block', 'bar', 'cafeteria',
+                    'club', 'company', 'dojo', 'gym', 'laboratory',
+                    'office', 'restaurant', 'supermarket', 'villa']
 
 class Server:
     """Server"""
@@ -23,7 +25,8 @@ class Server:
         """
         Server constructor.
         """
-        self.valid_sub: SubscriptionMap = {}
+        self.valid_sub: SubscriptionMap = {} # will contain (SubscriptionName : (idx, attribute))
+        self.subscribers: Dict[str, List[str]] = {} # will contain (Username : ListOfSubscriptionsStrings)
 
     @staticmethod
     def generate_ca(
@@ -49,7 +52,7 @@ class Server:
         for sub in [key for key in subscriptions if ((key in all_possible_subs) and (not key == 'username'))]:
                 valid_sub[sub] = (all_possible_subs.index(sub) + 1, c.G1.order().random()) # "+1" because 0 is for the user
         
-        att = [(0, None)] + list(valid_sub.values()) #TODO: check if the 0 causes issues in computation later
+        att = [(0, None)] + list(valid_sub.values())
         (sk_s, pk_s) = c.generate_key(att)
         
         return (jsonpickle.encode((sk_s, valid_sub)).encode(), jsonpickle.encode(pk_s).encode())
@@ -67,39 +70,49 @@ class Server:
 
         Args:
             server_sk: the server's secret key (serialized)
+            public_sk: the server's public key (serialized)
             issuance_request: The issuance req uest (serialized)
             username: username
-            subscriptions: attributes
+            subscriptions: user's subscriptions
 
         Return:
             serialized response (the client should be able to build a
                 credential with this response).
         """
         
-        (s_sk, valid_sub) = jsonpickle.decode(server_sk)
+        (sk_s, valid_sub) = jsonpickle.decode(server_sk)
         
         if len(self.valid_sub) == 0: # Does not replace the server subs list if it has already been initialized
             self.valid_sub = valid_sub
         
-        s_pk = jsonpickle.decode(server_pk)
+        pk_s = jsonpickle.decode(server_pk)
         
         # If a user's subscriptions is not in the list of valid attributes return None
         valid_keys = list(self.valid_sub.keys())
         is_valid = all(sub in valid_keys for sub in subscriptions)
         if not is_valid:
-            print("Items in subscription not valid")
+            print("ERR: Items in subscription not valid")
             return jsonpickle.encode(None).encode()
         
         # Issuer attributes, create an AttributeMap from valid subscriptions
-        iss_att = {att[0]:att[1] for (k, att) in self.valid_sub.items() if k in subscriptions}     
+        iss_att = [v for k, v in valid_sub.items() if k in subscriptions]
         
-        # Recover C and PI, decode
+        # Decode the issue request
         req: c.IssueRequest  = jsonpickle.decode(issuance_request)
         if req == None:
             return jsonpickle.encode(None).encode()
 
-        signed_req = c.sign_issue_request(s_sk, s_pk, req, iss_att)
-        
+        # Sign it
+        signed_req = c.sign_issue_request(sk_s, pk_s, req, subscriptions, valid_sub)
+        if signed_req == None:
+            return jsonpickle.encode(None).encode()
+
+        # If the request was a valid one, then return the signed request with the issuer attributes and keep a record of the subscription
+        if username in self.subscribers:
+            self.subscribers[username] = list( set(self.subscribers[username]) | set(subscriptions) ) # union of both list without duplicates
+        else:
+            self.subscribers[username] = subscriptions
+
         return jsonpickle.encode((signed_req, iss_att)).encode()
 
     def check_request_signature(
@@ -124,45 +137,52 @@ class Server:
         s_pk = jsonpickle.decode(server_pk)
         signature = jsonpickle.decode(signature)
         if signature == None:
-            print("Signature is None")
+            print("ERR: Signature is None")
             return False
         
         is_valid = all(sub in self.valid_sub.keys() for sub in revealed_attributes)
         if not is_valid:
-            print("Cannot request this attribute")
+            print("ERR: Cannot request one or more of these attributes")
             return False
         
         # Check the proof
-        (client_signature, c_pk, disc_proof) = signature
+        (client_signature, disc_proof) = signature
         
-        # Cast attribute keys in int since jsonpickle changed them to str
-        ((sigp1, sigp2), PI) = disc_proof
-        
-        revealed_att_map = {att[0]:att[1] for (sub, att) in self.valid_sub.items() if sub in revealed_attributes}
-        proof_res = c.verify_disclosure_proof(s_pk, disc_proof, revealed_att_map)
-        if not proof_res:
-            print("Wrong proof")
-            return False
-        
-        # Check the signature
-        signature_res = c.verify(c_pk, client_signature, [message])
-        if not signature_res:
-            print("Wrong signature")
-            return False
-        
-        return True
+        revealed_att_map = [att for sub, att in self.valid_sub.items() if sub in revealed_attributes]
 
+        # TODO: How to retrieve [(0, Whatever)] in a nice form?
+        user_att_idx = 0
+        proof_res = c.verify_disclosure_proof(s_pk, disc_proof, [(user_att_idx, None)])
+        if not proof_res:
+            print("ERR: Wrong proof")
+            return False
+
+        ((sigp1, _), disclosed_attributes, (_, Rnd_is, challenge, _, s_is)) = disc_proof
+
+        is_valid = all(self.valid_sub[e] in disclosed_attributes for e in revealed_attributes)
+        if not is_valid:
+            print("ERR: The couples in the discole proof and in the ones stored on the server are not the same")
+            return False
+
+        # Check the signature
+        Rnd_user = [v for k, v in Rnd_is if k == user_att_idx][0]
+        s_user = [v for k, v in s_is if k == user_att_idx][0]
+
+        c_pk = (sigp1 ** s_user) / (Rnd_user ** challenge)
+
+        return sigp1.pair(client_signature) == c_pk.pair(G2.hash_to_point(message))
+        
 class Client:
     """Client"""
 
-    def __init__(self, username = None):
+    def __init__(self, username:str = None, subs_list:List[str] = None):
         """
         Client constructor.
         """
         self.pk: c.PublicKey = None
         self.sk: c.SecretKey = None
         self.username: str = username
-        #TODO: add user_attributes list
+        self.subs_list: List[str] = subs_list
         
     def prepare_registration(
             self,
@@ -188,6 +208,14 @@ class Client:
         server_pk = jsonpickle.decode(server_pk)
         (_, Y, _, _, _) = server_pk # Need the number of attributes to generate client's keys (length of Y)
         
+        if self.username == None: 
+            self.username = username
+        
+        if self.subs_list == None:
+            self.subs_list = subscriptions
+        else:
+            self.subs_list = list(set(self.subs_list) | set(subscriptions))
+        
         # Secret key of client
         (sk_c, pk_c) = c.generate_key(Y)
         self.pk = pk_c
@@ -195,10 +223,8 @@ class Client:
         
         # User attributes : client's secret key (with key 0)
         (x,_,_) = sk_c
-        user_att = {0: x}
+        user_att = [(0, x)]
         
-        if self.username == None: self.username = username
-
         # Create the request
         (req, t) = c.create_issue_request(server_pk, user_att)
         
@@ -233,17 +259,20 @@ class Client:
         response_dec = jsonpickle.decode(server_response)
         if response_dec == None:
             return jsonpickle.encode(None).encode()
-        
+
+        ((sigp1, sigp2), iss_att) = response_dec
+
         # Somehow the key of the attributes are cast to str -> recast to int
-        ((sig1,sig2),iss_att) = response_dec
-        iss_att = {int(key):att for (key,att) in iss_att.items()}
-        response_dec = ((sig1, sig2), iss_att)
+        iss_att = [(int(key), att) for (key, att) in iss_att]
+        response_dec = ((sigp1, sigp2), iss_att)
                 
         # Obtain credentials
         (x,_,_) = self.sk
-        user_att = {0: x}
-        credential = c.obtain_credential(server_pk, response_dec, t, user_att, iss_att)
-        return jsonpickle.encode(credential).encode()
+        user_att = [(0, x)]
+        user_att.extend(iss_att)
+
+        credential = c.obtain_credential(server_pk, (sigp1, sigp2), t, user_att)
+        return jsonpickle.encode(credential).encode() # Could be an encoded None
         
     def sign_request(
             self,
@@ -270,16 +299,21 @@ class Client:
         if credentials == None:
             return jsonpickle.encode(None).encode()
         
-        (sig, att) = credentials
-                
-        # User attributes is the one with key 0 
-        hidden_att = {int(k):v for (k,v) in att.items() if int(k)==0}
+
+        # TODO: check which one works, but both should
+        # User attributes is the one with key 0
+        # (_, att) = credentials
+        # hidden_att = [(int(k), v) for k, v in att if int(k) == 0]
+        (x, _, _) = self.sk
+        hidden_att = [(0, x)]
         
         # Create discolsure proof using its credentials
-        credentials = (sig, att)
         disc_proof = c.create_disclosure_proof(server_pk, credentials, hidden_att)
         
         # Sign the message using PS scheme
-        client_signature = c.sign(self.sk, [message])
+        # client_signature = c.sign(self.sk, [message])
+        # if client_signature == None:
+        #     return jsonpickle.encode(None).encode()
+        client_signature = G2.hash_to_point(message) ** x
         
-        return jsonpickle.encode((client_signature, self.pk, disc_proof)).encode()
+        return jsonpickle.encode((client_signature, disc_proof)).encode()
