@@ -302,10 +302,11 @@ class Client:
 
         # TODO: check which one works, but both should
         # User attributes is the one with key 0
-        # (_, att) = credentials
-        # hidden_att = [(int(k), v) for k, v in att if int(k) == 0]
-        (x, _, _) = self.sk
-        hidden_att = [(0, x)]
+        (_, att) = credentials
+        hidden_att = [(int(k), v) for k, v in att if int(k) == 0]
+        _, x = hidden_att[0]
+        # (x, _, _) = self.sk
+        # hidden_att = [(0, x)]
         
         # Create discolsure proof using its credentials
         disc_proof = c.create_disclosure_proof(server_pk, credentials, hidden_att)

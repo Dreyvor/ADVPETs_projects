@@ -1,1 +1,4 @@
 __pycache__/*
+captures/
+handout/*_backup.pdf
+test_proof.py
