@@ -1,4 +1,6 @@
 #!/bin/bash
+# Modify command in line 43
+
 
 echo "### SERVER ###"
 echo ""
@@ -31,6 +33,12 @@ echo "==> DONE"
 ###### DOCKER IS RUNNING
 SRV_PATH=/server
 
+# kill the server with "pkill tcpdump"
+CAP_FILE_PATH=server.pcap
+echo -n "# Starting the capture. We will end the capture in the client script... "
+sudo docker exec -td cs523-server tcpdump -i any -w $SRV_PATH/captures/$CAP_FILE_PATH
+echo "==> DONE"
+
 echo -n "# Setting up the server... "
 sudo docker exec -t cs523-server python3 $SRV_PATH/server.py setup -S restaurant -S bar -S dojo
 echo "==> DONE"
@@ -38,12 +46,6 @@ echo "==> DONE"
 # kill the server with "pkill python3"
 echo -n "# Starting the server in detach mode... "
 sudo docker exec -td cs523-server python3 $SRV_PATH/server.py run -s $SRV_PATH/key.sec -p $SRV_PATH/key.pub
-echo "==> DONE"
-
-# kill the server with "pkill tcpdump"
-CAP_FILE_PATH=server.pcap
-echo -n "# Starting the capture. We will end the capture in the client script... "
-sudo docker exec -td cs523-server tcpdump -i any -w $SRV_PATH/captures/$CAP_FILE_PATH
 echo "==> DONE"
 
 echo ""
