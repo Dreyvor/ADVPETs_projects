@@ -35,7 +35,7 @@ fi
 ###### DOCKER IS RUNNING
 CLI_PATH=/client
 CAP_FILE_PATH=client.pcap
-OUT_FILE_PATH=client_output.txt
+OUT_FILE_PATH=output.txt
 
 echo -n "# Starting the capture... "
 sudo docker exec -td cs523-client tcpdump -i any -w $CLI_PATH/captures/$CAP_FILE_PATH
@@ -46,8 +46,11 @@ sudo docker exec -t cs523-client python3 $CLI_PATH/client.py get-pk
 sudo docker exec -t cs523-client python3 $CLI_PATH/client.py register -u clientName -S restaurant -S bar -S dojo
 echo "==> DONE"
 
-echo "# Resetting output file... "
-echo "" > $CAP_DIR_PATH/$OUT_FILE_PATH
+echo "# Saving IPs in the output file... "
+echo "##### CLIENT IP #####" > $CAP_DIR_PATH/$OUT_FILE_PATH
+sudo docker exec -t cs523-client ip a >> $CAP_DIR_PATH/$OUT_FILE_PATH
+echo "##### SERVER IP #####" >> $CAP_DIR_PATH/$OUT_FILE_PATH
+sudo docker exec -t cs523-server ip a >> $CAP_DIR_PATH/$OUT_FILE_PATH
 echo "==> DONE"
 
 echo "# Running $1 random requests to server through Tor"
