@@ -4,16 +4,29 @@
 
 echo "### SERVER ###"
 echo ""
-CAP_DIR_PATH=../captures
+CAP_DIR_NAME=captures
+SRV_CAP_DIR_NAME=server
+CAPTURE_LOC="$CAP_DIR_NAME/$SRV_CAP_DIR_NAME"
 
-echo "# Checking if captures folder exists"
-if [ -d $CAP_DIR_PATH ]
+echo "# Checking if captures folders exist... "
+echo -ne "\t../$CAP_DIR_NAME "
+if [ -d ../$CAP_DIR_NAME ]
 then
-	echo "already exists. ==> DONE"
+	echo -e "already exists ==> OK"
 else
-	echo -n "it does not exist ==> creating it... "
-	mkdir $CAP_DIR_PATH
-	echo "==> DONE"
+	echo -ne "does not exist ==> creating it... "
+	mkdir ../$CAP_DIR_NAME
+	echo "==> OK"
+fi
+
+echo -ne "\t../$CAPTURE_LOC "
+if [ -d ../$CAPTURE_LOC ]
+then
+	echo -e "already exists ==> OK"
+else
+	echo -ne "does not exist ==> creating it... "
+	mkdir ../$CAPTURE_LOC
+	echo "==> OK"
 fi
 
 # echo "# Check if cs523-server is already running as docker"
@@ -33,10 +46,14 @@ echo "==> DONE"
 ###### DOCKER IS RUNNING
 SRV_PATH=/server
 
+PREFIX="server-"
+RND_STR=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10 ; echo '')
+EXT=".pcap"
+CAP_FILE_PATH="$PREFIX$RND_STR$EXT"
+
 # kill the server with "pkill tcpdump"
-CAP_FILE_PATH=server.pcap
 echo -n "# Starting the capture. We will end the capture in the client script... "
-sudo docker exec -td cs523-server tcpdump -i any -w $SRV_PATH/captures/$CAP_FILE_PATH
+sudo docker exec -td cs523-server tcpdump -i any -w $SRV_PATH/$CAPTURE_LOC/$CAP_FILE_PATH
 echo "==> DONE"
 
 echo -n "# Setting up the server... "
@@ -49,7 +66,7 @@ sudo docker exec -td cs523-server python3 $SRV_PATH/server.py run -s $SRV_PATH/k
 echo "==> DONE"
 
 echo ""
-echo "# INFO: Server is running and the capture is writing in $CAP_DIR_PATH/$CAP_FILE_PATH on local machine"
+echo "# INFO: Server is running and the capture is writing in $CAPTURE_LOC/$CAP_FILE_PATH on local machine"
 
 echo "# INFO: Opening an interactive terminal on cs523-server... "
 sudo docker exec -it cs523-server /bin/bash
