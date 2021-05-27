@@ -96,7 +96,7 @@ do
 	do
 		echo -e "\t# INFO: cell $cellID, requests $req_nb/$1"
 		echo "##### REQUEST $req_nb/$1, CELL $cellID #####" >> ../$CAPTURE_LOC/$OUT_FILE_PREFIX$cellID$OUT_FILE_EXT
-		sudo docker exec -t cs523-client python3 $CLI_PATH/client.py grid $req_nb -T restaurant -t >> ../$CAPTURE_LOC/$OUT_FILE_PREFIX$cellID$OUT_FILE_EXT
+		sudo docker exec -t cs523-client python3 $CLI_PATH/client.py grid $cellID -T restaurant -t >> ../$CAPTURE_LOC/$OUT_FILE_PREFIX$cellID$OUT_FILE_EXT
 	done
 
 	echo -ne "\t# Waiting 2 seconds for the last requests to end... "
