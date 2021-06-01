@@ -249,8 +249,7 @@ def create_disclosure_proof(
 
 def verify_disclosure_proof(
         pk: PublicKey,
-        disclosure_proof: DisclosureProof,
-        hidden_attributes: AttributeMap
+        disclosure_proof: DisclosureProof
     ) -> bool:
     """ Verify the disclosure proof
 

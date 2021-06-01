@@ -236,7 +236,7 @@ def test_create_verify_disclosure_proof():
     disProof = c.create_disclosure_proof(pk, anon_cred, hid_att)
     
     # Verify disclosure proof
-    assert c.verify_disclosure_proof(pk, disProof, hid_att)
+    assert c.verify_disclosure_proof(pk, disProof)
     
 def test_verify_disclosure_proof_bigNumbers():
     subscription_map = {}
@@ -268,5 +268,5 @@ def test_verify_disclosure_proof_bigNumbers():
     assert disProof != None
     
     # Verify disclosure proof
-    ret_code = c.verify_disclosure_proof(pk, disProof, hid_att)
+    ret_code = c.verify_disclosure_proof(pk, disProof)
     assert ret_code 
