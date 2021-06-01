@@ -1,3 +1,9 @@
 __pycache__/*
+<<<<<<< HEAD
 .ipynb_checkpoints/*
 .pytest_cache/*
+=======
+captures/
+handout/*_backup.pdf
+test_proof.py
+>>>>>>> 05ecc8991342f771ade99b3e3250366f04b3ba47

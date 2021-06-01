@@ -21,8 +21,6 @@ from petrelic.multiplicative.pairing import G1, G2, GT
 from petrelic.multiplicative.pairing import G1Element, G2Element
 from petrelic.bn import Bn
 
-import numpy as np
-
 import hashlib as hlib
 
 # Type hint aliases
