@@ -150,9 +150,8 @@ class Server:
         
         revealed_att_map = [att for sub, att in self.valid_sub.items() if sub in revealed_attributes]
 
-        # TODO: How to retrieve [(0, Whatever)] in a nice form?
         user_att_idx = 0
-        proof_res = c.verify_disclosure_proof(s_pk, disc_proof, [(user_att_idx, None)])
+        proof_res = c.verify_disclosure_proof(s_pk, disc_proof)
         if not proof_res:
             print("ERR: Wrong proof")
             return False

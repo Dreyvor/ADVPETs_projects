@@ -284,7 +284,7 @@ def verify_disclosure_proof(
     # hid_idx = [idx for idx, _ in hidden_attributes]
     all_idxs = [i for i, _ in Yt]
     disclosed_idxs = [i for i, _ in disclosed_attributes]
-    hid_idx = [i for in in all_idxs if i not in disclosed_idxs]
+    hid_idx = [i for i in all_idxs if i not in disclosed_idxs]
     hidden_Yt = [(i, Yt_i) for i, Yt_i in Yt if i in hid_idx]
 
     sigma_right *= GT.prod([((sigp1 ** s_i) / Rnd_i ** challenge).pair(Yt_i) for i, s_i, Rnd_i, Yt_i in idx_zip(s_is, Rnd_is, hidden_Yt)])
