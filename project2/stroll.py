@@ -102,16 +102,16 @@ class Server:
         if req == None:
             return jsonpickle.encode(None).encode()
 
-        # Sign it
-        signed_req = c.sign_issue_request(sk_s, pk_s, req, subscriptions, valid_sub)
-        if signed_req == None:
-            return jsonpickle.encode(None).encode()
-
         # If the request was a valid one, then return the signed request with the issuer attributes and keep a record of the subscription
         if username in self.subscribers:
             self.subscribers[username] = list( set(self.subscribers[username]) | set(subscriptions) ) # union of both list without duplicates
         else:
             self.subscribers[username] = subscriptions
+
+        # Sign it
+        signed_req = c.sign_issue_request(sk_s, pk_s, req, self.subscribers[username], valid_sub)
+        if signed_req == None:
+            return jsonpickle.encode(None).encode()
 
         return jsonpickle.encode((signed_req, iss_att)).encode()
 
@@ -300,18 +300,16 @@ class Client:
             return jsonpickle.encode(None).encode()
         
 
-        # TODO: check which one works, but both should
         # User attributes is the one with key 0
         (_, att) = credentials
         hidden_att = [(int(k), v) for k, v in att if int(k) == 0]
         _, x = hidden_att[0]
-        # (x, _, _) = self.sk
-        # hidden_att = [(0, x)]
         
         # Create discolsure proof using its credentials
         disc_proof = c.create_disclosure_proof(server_pk, credentials, hidden_att)
         
         # Sign the message using PS scheme
+        # TODO: Check if we delete that comments below
         # client_signature = c.sign(self.sk, [message])
         # if client_signature == None:
         #     return jsonpickle.encode(None).encode()
