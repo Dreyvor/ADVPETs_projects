@@ -234,6 +234,11 @@ def test_create_verify_disclosure_proof():
 
     # Create disclosure proof
     disProof = c.create_disclosure_proof(pk, anon_cred, hid_att)
-    
+    assert( len(disProof[1]) == nb_msgs - len(hid_att_keys))
+
+    hid_att_idx = [i for i, _ in hid_att]
+    for disc_key in  [i for i, _ in disProof[1]]:
+        assert disc_key not in hid_att_idx
+
     # Verify disclosure proof
     assert c.verify_disclosure_proof(pk, disProof)

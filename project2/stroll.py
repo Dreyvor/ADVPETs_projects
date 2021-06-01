@@ -16,7 +16,7 @@ SubscriptionMap = Dict[str, Tuple[int, c.Attribute]]
 
 all_possible_subs = ['appartment_block', 'bar', 'cafeteria',
                     'club', 'company', 'dojo', 'gym', 'laboratory',
-                    'office', 'restaurant', 'supermarket', 'villa']
+                    'office', 'restaurant', 'supermarket', 'villa'] # extracted from privacy_evaluation/queries.csv
 
 class Server:
     """Server"""
