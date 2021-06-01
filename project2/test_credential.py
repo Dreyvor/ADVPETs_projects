@@ -135,12 +135,12 @@ def test_sign_request_wrong_zkp():
     while wrong_choice_keys is ua_keys:
         wrong_choice_keys = np.random.choice(key_str, np.random.randint(1, nb_msgs), replace=False)
 
-    print(ua_keys)
-    print(wrong_choice_keys)
     wrong_choice = [v for k, v in msgs_dict.items() if k in wrong_choice_keys]
     
-    ((commitment, zkp), t) = c.create_issue_request(pk, ua)
-    
+    issue_req_1 = c.create_issue_request(pk, ua)
+    assert issue_req_1 != None
+    ((commitment, zkp), t) = issue_req_1
+
     zkp2 = c.generate_zkp_prover_side(pk, t, wrong_choice, commitment)
     
     request = (commitment, zkp2)
@@ -149,55 +149,56 @@ def test_sign_request_wrong_zkp():
     assert res == None
 
 def test_obtain_cred_wrong_sig():
-    att = {}
-    att['a'] = (1, c.Bn(1))
-    att['b'] = (2, c.Bn(2))
-    att['c'] = (3, c.Bn(3))
-    att['d'] = (4, c.Bn(4))
+    msgs = [(i+1, G1.order().random()) for i in range(nb_msgs)]
+    key_str = [''.join(np.random.choice(list(string.ascii_letters + string.digits), 10)) for _ in range(nb_msgs)]
 
-    (sk,pk) = c.generate_key(att.values())
+    msgs_dict = {k: v for k,v in zip(key_str, msgs)}
     
-    ua_str = ['a', 'c']
-    ua = [att[c] for c in ua_str]
+    (sk, pk) = c.generate_key(msgs_dict.values())
+    
+    ua_keys = np.random.choice(key_str, np.random.randint(1, np.ceil(.4 * nb_msgs)), replace=False)
+    ua = [v for k,v in msgs_dict.items() if k in ua_keys]
 
-    ia_str = ['b', 'd']
-    ia = [att[c] for c in ia_str]
+    ia_keys = [k for k in key_str if k not in ua_keys]
+    ia = [v for k, v in msgs_dict.items() if k in ia_keys]
     
-    (request, t) = c.create_issue_request(pk, ua)
-    (sig1, sig2) = c.sign_issue_request(sk, pk, request, ia_str, att)
+    issue_req_1 = c.create_issue_request(pk, ua)
+    assert issue_req_1 != None
+    (request, t) = issue_req_1
+
+    (sig1, sig2) = c.sign_issue_request(sk, pk, request, ia_keys, msgs_dict)
     
     sig1_n = c.G1.generator() ** c.G1.order().random()
     while(sig1_n.eq(sig1)):
         sig1_n = c.G1.generator() ** c.G1.order().random()
     
-    res = c.obtain_credential(pk, (sig1_n, sig2), t, ua)
+    res = c.obtain_credential(pk, (sig1_n, sig2), t, msgs)
     
     assert res == None
 
 
 def test_obtain_cred():
-    subscription_map = {}
-    subscription_map['a'] = (1, c.Bn(1))
-    subscription_map['b'] = (2, c.Bn(2))
-    subscription_map['c'] = (3, c.Bn(3))
-    subscription_map['d'] = (4, c.Bn(4))
+    subscription_atts = [(i+1, G1.order().random()) for i in range(nb_msgs)]
+    subscription_keys = [''.join(np.random.choice(list(string.ascii_letters + string.digits), 10)) for _ in range(nb_msgs)]
 
-    attributes = list(subscription_map.values())
-
-    (sk, pk) = c.generate_key(attributes)
+    subscription_map = {k: v for k,v in zip(subscription_keys, subscription_atts)}
     
-    ua_str = ['a', 'd']
-    ua = [subscription_map[c] for c in ua_str]
-
-    ia_str = ['b', 'c']
-    ia = [subscription_map[c] for c in ia_str]
+    (sk, pk) = c.generate_key(subscription_map.values())
     
-    (request, t) = c.create_issue_request(pk, ua)
-    assert(request != None and t != None)
-    response = c.sign_issue_request(sk, pk, request, ia_str, subscription_map)
+    ua_keys = np.random.choice(subscription_keys, np.random.randint(1, np.ceil(.4 * nb_msgs)), replace=False)
+    ua = [v for k,v in subscription_map.items() if k in ua_keys]
+
+    ia_keys = [k for k in subscription_keys if k not in ua_keys]
+    ia = [v for k, v in subscription_map.items() if k in ia_keys]
+    
+    issue_req_1 = c.create_issue_request(pk, ua)
+    assert(issue_req_1 != None)
+    (request, t) = issue_req_1
+
+    response = c.sign_issue_request(sk, pk, request, ia_keys, subscription_map)
     assert(response != None)
        
-    anon_cred = c.obtain_credential(pk, response, t, attributes)
+    anon_cred = c.obtain_credential(pk, response, t, subscription_atts)
     
     assert anon_cred != None
     
@@ -207,38 +208,35 @@ def test_obtain_cred():
 #########################
 
 def test_create_verify_disclosure_proof():
-    subscription_map = {}
-    subscription_map['a'] = (1, c.Bn(1))
-    subscription_map['b'] = (2, c.Bn(2))
-    subscription_map['c'] = (3, c.Bn(3))
-    subscription_map['d'] = (4, c.Bn(4))
+    subscription_atts = [(i+1, G1.order().random()) for i in range(nb_msgs)]
+    subscription_keys = [''.join(np.random.choice(list(string.ascii_letters + string.digits), 10)) for _ in range(nb_msgs)]
 
-    attributes = list(subscription_map.values())
-
-    (sk,pk) = c.generate_key(attributes)
+    subscription_map = {k: v for k,v in zip(subscription_keys, subscription_atts)}
     
-    ua_str = ['a', 'd']
-    ua = [subscription_map[c] for c in ua_str]
+    (sk, pk) = c.generate_key(subscription_map.values())
+    
+    ua_keys = np.random.choice(subscription_keys, np.random.randint(1, np.ceil(.4 * nb_msgs)), replace=False)
+    ua = [v for k,v in subscription_map.items() if k in ua_keys]
 
-    ia_str = ['b', 'c']
-    ia = [subscription_map[c] for c in ia_str]
+    ia_keys = [k for k in subscription_keys if k not in ua_keys]
+    ia = [v for k, v in subscription_map.items() if k in ia_keys]
     
     (request, t) = c.create_issue_request(pk, ua)
-    response = c.sign_issue_request(sk, pk, request, ia_str, subscription_map)
-    anon_cred = c.obtain_credential(pk, response, t, attributes)
+
+    response = c.sign_issue_request(sk, pk, request, ia_keys, subscription_map)
+       
+    anon_cred = c.obtain_credential(pk, response, t, subscription_atts)
     assert anon_cred != None
     
-    hid_att_str = ['b', 'a', 'd']
-    hid_att = [subscription_map[e] for e in hid_att_str]
+    # Testing disclosure proof
+    hid_att_keys = np.random.choice(subscription_keys, np.random.randint(1, np.ceil(.4 * nb_msgs)), replace=False)
+    hid_att = [subscription_map[e] for e in hid_att_keys]
 
     # Create disclosure proof
     disProof = c.create_disclosure_proof(pk, anon_cred, hid_att)
-    assert disProof != None
     
     # Verify disclosure proof
-    ret_code = c.verify_disclosure_proof(pk, disProof, hid_att)
-    assert ret_code 
-
+    assert c.verify_disclosure_proof(pk, disProof, hid_att)
     
 def test_verify_disclosure_proof_bigNumbers():
     subscription_map = {}
