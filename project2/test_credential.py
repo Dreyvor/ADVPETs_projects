@@ -237,36 +237,3 @@ def test_create_verify_disclosure_proof():
     
     # Verify disclosure proof
     assert c.verify_disclosure_proof(pk, disProof)
-    
-def test_verify_disclosure_proof_bigNumbers():
-    subscription_map = {}
-    subscription_map['a'] = (1, c.Bn(100123))
-    subscription_map['b'] = (2, c.Bn(201234))
-    subscription_map['c'] = (3, c.Bn(10321))
-    subscription_map['d'] = (4, c.Bn(31273))
-
-    attributes = list(subscription_map.values())
-
-    (sk,pk) = c.generate_key(attributes)
-    
-    ua_str = ['d', 'a']
-    ua = [subscription_map[c] for c in ua_str]
-
-    ia_str = ['b', 'c']
-    ia = [subscription_map[c] for c in ia_str]
-    
-    (request, t) = c.create_issue_request(pk, ua)
-    response = c.sign_issue_request(sk, pk, request, ia_str, subscription_map)
-    anon_cred = c.obtain_credential(pk, response, t, attributes)
-    assert anon_cred != None
-    
-    hid_att_str = ['d', 'a', 'c']
-    hid_att = [subscription_map[e] for e in hid_att_str]
-
-    # Create disclosure proof
-    disProof = c.create_disclosure_proof(pk, anon_cred, hid_att)
-    assert disProof != None
-    
-    # Verify disclosure proof
-    ret_code = c.verify_disclosure_proof(pk, disProof)
-    assert ret_code 
