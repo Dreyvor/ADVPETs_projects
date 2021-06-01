@@ -56,6 +56,30 @@ def test_sub_not_valid():
 
     assert not SERVER.check_request_signature(s_pk, message, types, request)
 
+def test_not_sub_type_request():
+
+    subscriptions = ['appartment_block', 'bar']
+
+    SERVER = Server()
+    (s_sk, s_pk) = Server.generate_ca(subscriptions)
+
+    c_subs = ['bar']
+    username = 'client1'
+    CLIENT = Client(username, c_subs)
+    
+    (issue_request, state) = CLIENT.prepare_registration(s_pk, CLIENT.username, CLIENT.subs_list)
+
+    processed_registration = SERVER.process_registration(s_sk, s_pk, issue_request, CLIENT.username, CLIENT.subs_list)
+
+    credentials = CLIENT.process_registration_response(s_pk, processed_registration, state)
+    
+    message = "46.52345,6.57890".encode('utf-8')
+    types = ['appartment_block'] # not a valid type requested
+
+    request = CLIENT.sign_request(s_pk, credentials, message, types)
+
+    assert not SERVER.check_request_signature(s_pk, message, types, request)
+
 
 def test_wrong_disclosure_proof():
 
