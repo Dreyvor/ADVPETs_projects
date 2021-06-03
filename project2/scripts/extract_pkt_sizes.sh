@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CAP_PATH="../captures/client"
+CAP_PATH="../captures/captures_all_cells_20_req_each/client"
 PREFIX_CAP_FILE="client-grid_"
 EXT_CAP_FILE=".pcap"
 NB_GRID=100
