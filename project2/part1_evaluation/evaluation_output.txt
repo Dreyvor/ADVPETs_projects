@@ -1,0 +1,60 @@
+############################################################
+EVAL_STROLL_FINE_GRAINED with 10000 runs
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 10000/10000 [07:11<00:00, 23.19it/s]
+--- GEN_KEYS:			 mean 5.86214 ms ; std 0.24969 ms ---
+--- ISSUANCE:			 mean 17.53190 ms ; std 0.73028 ms ---
+--- SHOW_CREDS:			 mean 4.22974 ms ; std 0.21414 ms ---
+--- VERIFY_SIGNED_REQUEST:	 mean 15.32128 ms ; std 0.57945 ms ---
+--- GLOBAL:			 mean 43.03176 ms ; std 1.61744 ms ---
+############################################################
+EVAL_STROLL_COARSE_GRAINED with 10 runs
+clients numbers: [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+requests numbers: [10]
+##### 1 clients with 10 requests #########################
+	GLOBAL:			 mean:     213.69100 ms ; std:       0.80995 ms
+##### 10 clients with 10 requests #########################
+	GLOBAL:			 mean:    2079.35057 ms ; std:      10.94271 ms
+##### 20 clients with 10 requests #########################
+	GLOBAL:			 mean:    4158.62393 ms ; std:      21.21620 ms
+##### 30 clients with 10 requests #########################
+	GLOBAL:			 mean:    6224.96409 ms ; std:      19.59889 ms
+##### 40 clients with 10 requests #########################
+	GLOBAL:			 mean:    8299.87328 ms ; std:      48.52054 ms
+##### 50 clients with 10 requests #########################
+	GLOBAL:			 mean:   10453.29063 ms ; std:      96.62890 ms
+##### 60 clients with 10 requests #########################
+	GLOBAL:			 mean:   12481.95677 ms ; std:      43.20375 ms
+##### 70 clients with 10 requests #########################
+	GLOBAL:			 mean:   14715.68682 ms ; std:      66.71685 ms
+##### 80 clients with 10 requests #########################
+	GLOBAL:			 mean:   16781.59158 ms ; std:      68.53326 ms
+##### 90 clients with 10 requests #########################
+	GLOBAL:			 mean:   18653.89192 ms ; std:     120.42884 ms
+##### 100 clients with 10 requests #########################
+	GLOBAL:			 mean:   20649.25108 ms ; std:     151.06984 ms
+############################################################
+EVAL_STROLL_COARSE_GRAINED with 10 runs
+clients numbers: [10]
+requests numbers: [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+##### 10 clients with 1 requests #########################
+	GLOBAL:			 mean:     367.41853 ms ; std:       6.09230 ms
+##### 10 clients with 10 requests #########################
+	GLOBAL:			 mean:    2085.99060 ms ; std:      10.45436 ms
+##### 10 clients with 20 requests #########################
+	GLOBAL:			 mean:    4001.67565 ms ; std:      26.54885 ms
+##### 10 clients with 30 requests #########################
+	GLOBAL:			 mean:    5904.75144 ms ; std:      39.13358 ms
+##### 10 clients with 40 requests #########################
+	GLOBAL:			 mean:    7852.02792 ms ; std:      57.55724 ms
+##### 10 clients with 50 requests #########################
+	GLOBAL:			 mean:    9817.67967 ms ; std:     119.71364 ms
+##### 10 clients with 60 requests #########################
+	GLOBAL:			 mean:   11812.95681 ms ; std:      74.80195 ms
+##### 10 clients with 70 requests #########################
+	GLOBAL:			 mean:   13836.77840 ms ; std:     184.77251 ms
+##### 10 clients with 80 requests #########################
+	GLOBAL:			 mean:   15742.83855 ms ; std:     174.20320 ms
+##### 10 clients with 90 requests #########################
+	GLOBAL:			 mean:   17556.75807 ms ; std:     345.26969 ms
+##### 10 clients with 100 requests #########################
+	GLOBAL:			 mean:   19647.72122 ms ; std:     288.28319 ms

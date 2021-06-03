@@ -207,10 +207,10 @@ class Client:
         server_pk = jsonpickle.decode(server_pk)
         (_, Y, _, _, _) = server_pk # Need the number of attributes to generate client's keys (length of Y)
         
-        if self.username == None: 
+        if self.username is None: 
             self.username = username
         
-        if self.subs_list == None:
+        if self.subs_list is None:
             self.subs_list = subscriptions
         else:
             self.subs_list = list(set(self.subs_list) | set(subscriptions))
