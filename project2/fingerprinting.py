@@ -4,6 +4,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold
 
+import math
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning) # FutureWarning coming from sklearn for forest
+
 
 def classify(train_features, train_labels, test_features, test_labels):
 
@@ -49,19 +53,25 @@ def perform_crossval(features, labels, folds=10):
     You need to use the data returned by classify() over all folds 
     to evaluate the performance.         
     """
-
+   
     kf = StratifiedKFold(n_splits=folds)
     labels = np.array(labels)
     features = np.array(features)
-
+    
     for train_index, test_index in kf.split(features, labels):
         X_train, X_test = features[train_index], features[test_index]
         y_train, y_test = labels[train_index], labels[test_index]
         predictions = classify(X_train, y_train, X_test, y_test)
 
-    ###############################################
-    # TODO: Write code to evaluate the performance of your classifier
-    ###############################################
+    nb_right = np.count_nonzero(np.array(predictions) == np.array(y_test))
+    
+    percent_correct = nb_right/len(predictions)
+    
+    print(predictions)
+    print(y_test)
+    
+    print("Accuracy[%] : ", percent_correct)
+    
 
 def load_data():
 
@@ -91,13 +101,31 @@ def load_data():
     feature extraction on your own.
     """
 
-    ###############################################
-    # TODO: Complete this function. 
-    ###############################################
+    nb_in_packets = np.load('captures/captures_all_cells_20_req_each/nb_in_packets.npy')
+    nb_in_packets_frac = np.load('captures/captures_all_cells_20_req_each/nb_in_packets_frac.npy')
+    nb_out_packets = np.load('captures/captures_all_cells_20_req_each/nb_out_packets.npy')
+    nb_out_packets_frac = np.load('captures/captures_all_cells_20_req_each/nb_out_packets_frac.npy')
+    nb_packets = np.load('captures/captures_all_cells_20_req_each/nb_packets.npy')
 
     features = []
-    labels = []
-
+    labels = [math.floor(i/20)+1 for i in range(100*20)]
+    
+    # 100 grids, 20 requests per grid
+    for i in range(100):
+        for j in range(20):
+            features_trace_i = [nb_out_packets[i][j], 
+                                nb_in_packets[i][j], 
+                                nb_out_packets_frac[i][j], 
+                                nb_in_packets_frac[i][j], 
+                                nb_packets[i][j]]
+            features.append(features_trace_i)
+        '''
+        features.append(nb_out_packets[i])
+        features.append(nb_in_packets[i])
+        features.append(nb_out_packets_frac[i])
+        features.append(nb_in_packets_frac[i])
+        features.append(nb_packets[i])'''
+        
     return features, labels
         
 def main():
