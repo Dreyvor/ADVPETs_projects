@@ -64,13 +64,15 @@ def perform_crossval(features, labels, folds=10):
         predictions = classify(X_train, y_train, X_test, y_test)
 
     nb_right = np.count_nonzero(np.array(predictions) == np.array(y_test))
+    accuracy = nb_right/len(predictions)
+
+    random_pred = np.random.randint(1,101,np.shape(predictions))
+    nb_right_rdm = np.count_nonzero(np.array(predictions) == np.array(random_pred))
+    acc_random = nb_right_rdm/len(predictions)
+    kappa = (accuracy - acc_random) / (1 - acc_random) # kappa statistic, k=1 is ideal, k=0 not better than random
     
-    percent_correct = nb_right/len(predictions)
-    
-    print(predictions)
-    print(y_test)
-    
-    print("Accuracy[%] : ", percent_correct)
+    print("Accuracy[%] : ", accuracy*100)
+    print("Kappa statistic : ", kappa)
     
 
 def load_data():
@@ -121,7 +123,7 @@ def load_data():
                                 nb_packets[i][j]]
             for e in [e for e in sizes_poi_pkts[i][j]]:
                 features_trace_i.append(e)
-            
+
             features.append(features_trace_i)
         '''
         features.append(nb_out_packets[i])
