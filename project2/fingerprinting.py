@@ -121,7 +121,7 @@ def load_data():
                                 nb_out_packets_frac[i][j], 
                                 nb_in_packets_frac[i][j], 
                                 nb_packets[i][j]]
-            for e in [e for e in sizes_poi_pkts[i][j]]:
+            for e in sizes_poi_pkts[i][j]:
                 features_trace_i.append(e)
 
             features.append(features_trace_i)

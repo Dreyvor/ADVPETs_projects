@@ -3,5 +3,4 @@ __pycache__/*
 .pytest_cache/*
 captures/
 handout/*_backup.pdf
-test_proof.py
 *.npy
