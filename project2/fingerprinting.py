@@ -101,11 +101,12 @@ def load_data():
     feature extraction on your own.
     """
 
-    nb_in_packets = np.load('captures/captures_all_cells_20_req_each/nb_in_packets.npy')
-    nb_in_packets_frac = np.load('captures/captures_all_cells_20_req_each/nb_in_packets_frac.npy')
-    nb_out_packets = np.load('captures/captures_all_cells_20_req_each/nb_out_packets.npy')
-    nb_out_packets_frac = np.load('captures/captures_all_cells_20_req_each/nb_out_packets_frac.npy')
-    nb_packets = np.load('captures/captures_all_cells_20_req_each/nb_packets.npy')
+    nb_in_packets = np.load('nb_in_packets.npy')
+    nb_in_packets_frac = np.load('nb_in_packets_frac.npy')
+    nb_out_packets = np.load('nb_out_packets.npy')
+    nb_out_packets_frac = np.load('nb_out_packets_frac.npy')
+    nb_packets = np.load('nb_packets.npy')
+    sizes_poi_pkts = np.load('sizes_poi_pkts.npy')
 
     features = []
     labels = [math.floor(i/20)+1 for i in range(100*20)]
@@ -117,7 +118,8 @@ def load_data():
                                 nb_in_packets[i][j], 
                                 nb_out_packets_frac[i][j], 
                                 nb_in_packets_frac[i][j], 
-                                nb_packets[i][j]]
+                                nb_packets[i][j],
+                                sizes_poi_pkts[i][j]]
             features.append(features_trace_i)
         '''
         features.append(nb_out_packets[i])
