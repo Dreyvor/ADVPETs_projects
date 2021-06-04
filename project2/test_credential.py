@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Apr 29 14:05:21 2021
-
-@author: benoit
-"""
 
 import credential as c
 import numpy as np

@@ -308,10 +308,6 @@ class Client:
         disc_proof = c.create_disclosure_proof(server_pk, credentials, hidden_att)
         
         # Sign the message using PS scheme
-        # TODO: Check if we delete that comments below
-        # client_signature = c.sign(self.sk, [message])
-        # if client_signature == None:
-        #     return jsonpickle.encode(None).encode()
         client_signature = G2.hash_to_point(message) ** x
         
         return jsonpickle.encode((client_signature, disc_proof)).encode()

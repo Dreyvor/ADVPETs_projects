@@ -222,7 +222,28 @@ def create_disclosure_proof(
     hidden_attributes_idx = [i for i, _ in hidden_attributes]
     disclosed_attributes = [(i, a_i) for i, a_i in ais if i not in hidden_attributes_idx]
 
-    ### ZKP for the attributes disclosure, prover side
+    """
+    Let's begin the ZKP for attributes disclosure, prover side
+    We need:
+        pk: server's public key
+        t: user's private state
+        sigma: signature
+        disclosed_attributes: attributes user wants to disclose to the verifier
+        hidden_attributes: attributes user wants to disclose from the verifier
+    Returns: the ZKP with Fiat-Shamir heuristic, prover side
+    
+    CLIENT                             pk, disclosed attributes, signature known by both                             SERVER
+    g_b <- from public key pk (G2)
+    r_t <-r Z_p
+    r_i <-r Z_p, for all i in hidden_attributes
+    R_t = g_b ** r_t
+    R_i = sigma ** r_i, for all i in hidden_attributes
+    c = H(R_t) + H(pk) + sum(H(R_i), over all i in hidden_attributes) + sum(H(a_i), over all i in disclosed attributes)
+    s_t = r_t * c + t
+    s_i = r_i * c + a_i, for all i in hidden_attributes
+        ---------------------(R_t, (R_0, ..., R_i), c, s_t, (s_0, ..., s_i))---------------------> verify_disclosure()
+    """
+
     # pick random big numbers for t and for all hidden attributes
     rnd_t = G2.order().random()
     Rnd_t = gt ** rnd_t
@@ -254,6 +275,20 @@ def verify_disclosure_proof(
     """ Verify the disclosure proof
 
     Hint: The verifier may also want to retrieve the disclosed attributes
+
+    ZKP for commitment, verifier side
+    Args:
+        pk: server's public key
+        proof: proof of attributes disclosure from user
+    Returns: True if the proof worked, False otherwise
+    CLIENT                 pk, disclosed attributes, randomized signature (s1, s2) known by both                 SERVER
+    prove_user_attributes_commitment()
+        ---------(R_t, (R_0, ..., R_i), c, s_t, (s_0, ..., s_i))--------->  check c == H(R_t) + H(pk) + sum(H(R_i), over all i in hidden_attributes) + sum(H(a_i), over all i in disclosed attributes)
+                                                                            check e(s2, g_b)
+                                                                                  ==
+                                                                                  e(s1, (g_b ** s_t) / (R_t ** c)) * e(s1, X_b) *
+                                                                                  product(e(s1, Y_b_i ** a_i), for all i in disclosed_attributes) *
+                                                                                  product(e((s1 ** s_i) / (R_i ** c), Y_b_i), for all i in hidden_attributes)
     """
     
     (g, Y, gt, Xt, Yt) = pk
@@ -281,7 +316,6 @@ def verify_disclosure_proof(
     sigma_right *= sigp1.pair(Xt)
     sigma_right *= GT.prod([sigp1.pair(Yt_i ** a_i) for _, Yt_i, a_i in filterY(Yt, disclosed_attributes)])
 
-    # hid_idx = [idx for idx, _ in hidden_attributes]
     all_idxs = [i for i, _ in Yt]
     disclosed_idxs = [i for i, _ in disclosed_attributes]
     hid_idx = [i for i in all_idxs if i not in disclosed_idxs]
@@ -297,15 +331,15 @@ def verify_disclosure_proof(
 #############
 
 def hash_sha(a):
-    """ TODO: Write descritption """
+    """ Helper function to hash using sha3-512 """
     return int.from_bytes(hlib.sha3_512(str(a).encode()).digest(), 'big')
 
 def hash_Rnd_is(Rnd_is: Union[List[Tuple[int, G1Element]], List[Tuple[int, G2Element]]]) -> int:
-    """ TODO: Write descritption """
+    """ Helper function to hash all Rnd_i element """
     return sum([hash_sha(Rnd_i) for _, Rnd_i in Rnd_is])
 
 def hash_pk(pk: PublicKey) -> int:
-    """ TODO: Write descritption """
+    """ Helper function to hash the publik key """
     (g, Y, gt, Xt, Yt) = pk
 
     c = hash_sha(g) + hash_sha(gt) + hash_sha(Xt)
@@ -322,8 +356,14 @@ def idx_zip(a: List[Tuple[int, Any]],
             b: List[Tuple[int, Any]],
             c: List[Tuple[int, Any]] = None) -> Union[
     List[Tuple[int, Any, Any]], List[Tuple[int, Any, Any, Any]], None]:
-    """ TODO: Write descritption """
-
+    """
+    Zip lists based on the index in the tuple, the lists must contain exactly the same set of indices
+    Args:
+        a: list of tuples (i, a_i)
+        b: list of tuples (i, b_i)
+        c: list of tuples (i, c_i) [OPTIONAL]
+    Returns: zipped list with entries (i, a_i, b_i) or (i, a_i, b_i, c_i)
+    """
     idx_a = [i for i, _ in a]
     idx_b = [i for i, _ in b]
 
@@ -349,7 +389,14 @@ def idx_zip(a: List[Tuple[int, Any]],
 
 def filterY(Y: Union[List[Tuple[int, G1Element]], List[Tuple[int, G2Element]]], attributes: AttributeMap) -> Union[
     List[Tuple[int, G1Element, Bn]], List[Tuple[int, G2Element, Bn]]]:
-    """TODO: Write description"""
+    """
+    Filter Y_i or Y_b_i depending on the indices present in the attributes
+    Args:
+        Y: list of Y_i or Y_b_i with associated indices
+        attributes: attributes for which we need Y_i or Y_b_i
+    Returns: filtered and zipped list with entries (i, Y_i or Y_b_i, a_i)
+    """
+
     filtered_Y = [(i, Y_i) for i, Y_i in Y if i in [k for k, _ in attributes]]
     return idx_zip(filtered_Y, attributes)
 
@@ -358,7 +405,28 @@ def generate_zkp_prover_side(
         t: Bn,
         user_attributes: AttributeMap,
         commitment: G1Element) -> ProofCommit:
-    """TODO: Write description"""
+    """
+    ZKP for commitment, prover side
+    
+    Args:
+        pk: server's public key
+        t: user's private state
+        user_attributes: attributes the user committed to
+        commitment: the commit generated by the user
+    Returns: the ZKP with Fiat-Shamir heuristic, prover side
+    
+    CLIENT                             pk known by both                             SERVER
+    g <- from public key pk (G1)
+    r_t <-r Z_p
+    r_i <-r Z_p, for all i in user_attributes
+    R_t = g ** r_t
+    R_i = g ** r_i, for all i in user_attributes
+    c = H(R_t) + H(pk) + sum(H(R_i), over all i in user_attributes
+    s_t = r_t + c * t
+    s_i = r_i + c * a_i, for all i in user_attributes
+
+        -----------(R_t, (R_0, ..., R_i), c, s_t, (s_0, ..., s_i)))-----------> verify_user_attributes_commitment()
+    """
 
     (g, Y, _, _, _) = pk
 
@@ -386,7 +454,21 @@ def generate_zkp_prover_side(
 def verify_user_attributes_commit(
         pk: PublicKey,
         request: IssueRequest) -> bool:
-    """ TODO: Write description """
+    """
+    ZKP for commitment, verifier side
+    
+    Args:
+        pk: server's public key
+        request: commitment + proof of commitment from user
+    Returns: True if the proof worked, False otherwise
+    
+    CLIENT                             pk and commitment (com) known by both                             SERVER
+    prove_user_attributes_commitment()
+        ---------(R_t, (R_0, ..., R_i), c, s_t, (s_0, ..., s_i))--------->  check c == H(R_t) + H(pk) + sum(H(R_i), over all i)
+                                                                            check (com ** c) * product(R_i, over all i) * R_t
+                                                                                  ==
+                                                                                  (g ** s_t) * product(Y_i ** s_i, over all i)
+    """
 
     (g, Y, _, _, _) = pk
     (commitment, (Rnd_t, Rnd_is, challenge, s_t, s_is)) = request

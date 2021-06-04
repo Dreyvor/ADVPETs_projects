@@ -1,9 +1,6 @@
 from serialization import jsonpickle
 from stroll import Server, Client
 
-#all_subscriptions = ['appartment_block', 'bar', 'cafeteria', 'club', 'company', 'dojo', 'gym', 'laboratory', 'office',
-#                     'restaurant', 'supermarket', 'villa']
-
 def test_run():
 
     subscriptions = ['appartment_block', 'bar','cafeteria']
@@ -92,7 +89,6 @@ def test_wrong_disclosure_proof():
     username1 = 'client1'
     CLIENT1 = Client(username1, c1_subs)
 
-    # c2_subs = ['appartment_block']
     c2_subs = ['bar']
     username2 = 'client2'
     CLIENT2 = Client(username2, c2_subs)
@@ -108,7 +104,6 @@ def test_wrong_disclosure_proof():
         
     message = "46.52345,6.57890".encode('utf-8')
     types1 = ['bar']
-    # types2 = ['appartment_block']
     types2 = ['bar']
     
     request1 = CLIENT2.sign_request(s_pk, credentials1, message, types1)
