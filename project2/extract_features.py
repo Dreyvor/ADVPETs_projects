@@ -11,62 +11,11 @@ nb_request_per_grid = 20
 nb_incoming_packets = np.zeros((100, nb_request_per_grid))
 nb_outgoing_packets = np.zeros((100, nb_request_per_grid))
 sizes_poi_pkts = np.zeros((100, nb_request_per_grid, 18)) # There is at most 18 http requests for a grid query 
-"""
-Could also be done by extracting the frame numbers of the
-http requests containing that "separation" since we can filter
-pcap by http, the firsts requests of each query will be located
-every X http requests (where X is the number of http requests 
-for a query of a given grid). Thus we don't need that, but we
-did not have enough time to obtain these.
-"""
-separation = b'"poi_list"'
 
 for k in tqdm(range(100)):
     
-    # Load packets for grid k. Capture with "scripts/capture_server.sh" and "scripts/capture_client.sh"
-    path = 'captures/client/client-grid_' + str(k+1) + '.pcap'
-    packets = s.rdpcap(path)
-    
-    # Iterate over the packets
-    req_found = 0 # nb_request_per_grid requests per file
-    for i, packet in enumerate(packets):
-
-        if(s.Raw in packet):
-            act = packet[s.Raw].load
-            if(separation in act):
-
-                # Count the number of incoming/outcoming packets from the proxy (between each requests)
-                nb_inc_pkt = 0
-                nb_out_pkt = 0
-                next_req = False
-                j = 1
-                while(not next_req):
-
-                    if(i+j >= len(packets)):
-                        nb_incoming_packets[k][req_found] = nb_inc_pkt
-                        nb_outgoing_packets[k][req_found] = nb_out_pkt
-                        break
-
-                    new_pkt = packets[i+j]
-                    if(s.TCP in new_pkt):
-                        if(new_pkt[s.TCP].sport == 9050): #if the packet comes from the proxy
-                            nb_inc_pkt = nb_inc_pkt + 1
-                        if(new_pkt[s.TCP].dport == 9050): #if the packet goes to the proxy
-                            nb_out_pkt = nb_out_pkt + 1
-
-                    if(s.Raw in new_pkt): # check if it is the next request
-                        if(separation in new_pkt.load):
-                            next_req = True
-                            nb_incoming_packets[k][req_found] = nb_inc_pkt
-                            nb_outgoing_packets[k][req_found] = nb_out_pkt
-                            req_found = req_found + 1
-
-                    j = j + 1
-
-                i = j
-
     # Fill sizes_poi_pkts with files that already have extracted sizes and frame number using "scripts/extract_pkt_sizes.sh"
-    path_sizes = 'captures/client_extracted_sizes/poi_pkt_sizes_grid_' + str(k+1) + '.txt'
+    path_sizes = 'captures/client_extracted_sizes/poi_pkt_sizes_grid_' + str(k+1) + '.txt' # contains "frame_number_pkt1;pkt_size_pkt1,frame_number_pkt2;pkt_size_pkt2,..." for grid k+1
 
     frame_nmb_and_sizes_str = []
     with open(path_sizes, 'r') as f:
@@ -87,6 +36,44 @@ for k in tqdm(range(100)):
     for i in range(nb_request_per_grid):
         splits.append(fn_sizes[idx:idx+nb_poi])
         idx += nb_poi
+
+    # Now we can extract the frame number of every first http requests (always the first of the lists)
+    fn_first_reqs = np.array([int(fn) for fn,_ in np.array(splits)[:,0]])
+
+    # Load packets for grid k. Capture with "scripts/capture_server.sh" and "scripts/capture_client.sh"
+    path = 'captures/client/client-grid_' + str(k+1) + '.pcap'
+    packets = s.rdpcap(path)
+    
+    # Iterate over the packets
+    req_found = 0 # nb_request_per_grid requests per file
+    idx_packet = 0 # represents the frame number-1 (wireshark starts at 1 but arrays in python start at 0)
+    while (idx_packet < len(packets)):
+
+        if((idx_packet+1) in fn_first_reqs):
+            # Count the number of incoming/outcoming packets from the proxy (between each requests)
+            nb_inc_pkt = 0
+            nb_out_pkt = 0
+            j = 1
+
+            idx_next_fn_first_req = 1 + np.argwhere(fn_first_reqs == (idx_packet+1))[0][0]
+            next_bound = fn_first_reqs[idx_next_fn_first_req] if idx_next_fn_first_req<len(fn_first_reqs) else len(packets)
+            while(idx_packet+j < next_bound-1):
+
+                new_pkt = packets[idx_packet+j]
+                if(s.TCP in new_pkt):
+                    if(new_pkt[s.TCP].sport == 9050): #if the packet comes from the proxy
+                        nb_inc_pkt += 1
+                    if(new_pkt[s.TCP].dport == 9050): #if the packet goes to the proxy
+                        nb_out_pkt += 1
+
+                j += 1
+            
+            nb_incoming_packets[k][req_found] = nb_inc_pkt
+            nb_outgoing_packets[k][req_found] = nb_out_pkt
+            req_found += 1
+            idx_packet += j
+        else:
+            idx_packet += 1
 
     # Prepare the arrays with these values to give it to ML
     for i in range(len(splits)):
