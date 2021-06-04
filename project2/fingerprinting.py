@@ -125,12 +125,6 @@ def load_data():
                 features_trace_i.append(e)
 
             features.append(features_trace_i)
-        '''
-        features.append(nb_out_packets[i])
-        features.append(nb_in_packets[i])
-        features.append(nb_out_packets_frac[i])
-        features.append(nb_in_packets_frac[i])
-        features.append(nb_packets[i])'''
         
     return features, labels
         

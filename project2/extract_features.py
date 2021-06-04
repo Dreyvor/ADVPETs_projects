@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Jun  2 16:10:37 2021
-
-@author: benoit
-"""
 
 import scapy.all as s
 import numpy as np
@@ -15,17 +10,22 @@ nb_request_per_grid = 20
 
 nb_incoming_packets = np.zeros((100, nb_request_per_grid))
 nb_outgoing_packets = np.zeros((100, nb_request_per_grid))
-sizes_poi_pkts = np.zeros((100, nb_request_per_grid, 18))
+sizes_poi_pkts = np.zeros((100, nb_request_per_grid, 18)) # There is at most 18 http requests for a grid query 
+"""
+Could also be done by extracting the frame numbers of the
+http requests containing that "separation" since we can filter
+pcap by http, the firsts requests of each query will be located
+every X http requests (where X is the number of http requests 
+for a query of a given grid). Thus we don't need that, but we
+did not have enough time to obtain these.
+"""
 separation = b'"poi_list"'
 
 for k in tqdm(range(100)):
-# for k in range(1):
     
-    # Load packets for grid k
+    # Load packets for grid k. Capture with "scripts/capture_server.sh" and "scripts/capture_client.sh"
     path = 'captures/client/client-grid_' + str(k+1) + '.pcap'
     packets = s.rdpcap(path)
-    
-    #print("CELL : ", k+1, path)
     
     # Iterate over the packets
     req_found = 0 # nb_request_per_grid requests per file
@@ -35,7 +35,7 @@ for k in tqdm(range(100)):
             act = packet[s.Raw].load
             if(separation in act):
 
-                # Count the number of incoming packets from the proxy (between each requests)
+                # Count the number of incoming/outcoming packets from the proxy (between each requests)
                 nb_inc_pkt = 0
                 nb_out_pkt = 0
                 next_req = False
@@ -65,11 +65,8 @@ for k in tqdm(range(100)):
 
                 i = j
 
-    # Fill sizes_poi_pkts with files that already have extracted sizes
+    # Fill sizes_poi_pkts with files that already have extracted sizes and frame number using "scripts/extract_pkt_sizes.sh"
     path_sizes = 'captures/client_extracted_sizes/poi_pkt_sizes_grid_' + str(k+1) + '.txt'
-    path_errors = 'captures/client_extracted_sizes/frame_number_with_reset_grid_' + str(k+1) + '.txt'
-    # path_sizes = 'captures/client_extracted_sizes/poi_pkt_sizes_grid_' + str(25) + '.txt'
-    # path_errors = 'captures/client_extracted_sizes/frame_number_with_reset_grid_' + str(25) + '.txt'
 
     frame_nmb_and_sizes_str = []
     with open(path_sizes, 'r') as f:
@@ -77,53 +74,19 @@ for k in tqdm(range(100)):
 
     fn_sizes = [(int(fn), int(pkt_size) if len(pkt_size) > 0 else np.nan) for fn, pkt_size in [e.split(';') for e in frame_nmb_and_sizes_str]]
 
-    # find the number of POI for that grid (+1 de to the first http request)
-    error_occured = False
+    # find the number of POI for that grid
     if(len(fn_sizes) % nb_request_per_grid == 0):
         nb_poi = int(len(fn_sizes) / nb_request_per_grid)
     else:
-        nb_poi = int((len(fn_sizes) - len(fn_sizes)%nb_request_per_grid) / nb_request_per_grid + 1)
-        error_occured = True
-    
-    if error_occured:
-        nb_pkt_in_error_req = len(fn_sizes) % nb_poi
-        fn_reset = []
-        with open(path_errors, 'r') as f:
-            fn_reset += f.read().split(',')
-        print(fn_reset)
-        fn_reset = [int(e) for e in fn_reset][0]
+        print("ERR: Please check the capture. At least one of the capture files contains errors.")
+        exit(1)
 
-    else:
-        nb_pkt_in_error_req = 0
-    
-    # drop the elements that returned an error
     splits = []
-    if(error_occured):
-        # extract the possible frame number of each response with the poi list (first request each time)
-        hypothetic_splits = []
-        idx = 0
-        while idx <= len(fn_sizes) - nb_poi:
-            hypothetic_splits.append(fn_sizes[idx][0])
-            idx += nb_poi
+    idx = 0
 
-        idx_to_drop = -1
-        for i, fn in enumerate(hypothetic_splits):
-            if(fn_reset >= fn):
-                idx_to_drop = i
-
-        idx = 0
-        for i in range(nb_request_per_grid):
-            if i != idx_to_drop:
-                splits.append(fn_sizes[idx:idx+nb_poi])
-                idx += nb_poi
-            else:
-                idx += nb_pkt_in_error_req
-    else:
-        idx = 0
-        for i in range(nb_request_per_grid):
-            splits.append(fn_sizes[idx:idx+nb_poi])
-            idx += nb_poi
-
+    for i in range(nb_request_per_grid):
+        splits.append(fn_sizes[idx:idx+nb_poi])
+        idx += nb_poi
 
     # Prepare the arrays with these values to give it to ML
     for i in range(len(splits)):
@@ -138,16 +101,6 @@ for k in tqdm(range(100)):
     col_mean = np.array([float(round(v)) for v in col_mean])
     idxs = np.where(np.isnan(sizes_poi_pkts[k,:,:]))
     sizes_poi_pkts[k][idxs] = np.take(col_mean, idxs[1])
-
-'''
-# Remove rows containing a '0'
-idx_to_remove_1 = np.asarray(np.where(np.any(nb_outgoing_packets == 0, axis=1))).flatten()
-idx_to_remove_2 = np.asarray(np.where(np.any(nb_incoming_packets == 0, axis=1))).flatten()
-idx_to_remove = np.unique(np.concatenate((idx_to_remove_1, idx_to_remove_2)))
-
-nb_outgoing_packets = np.array([arr for i,arr in enumerate(nb_outgoing_packets) if i not in idx_to_remove])
-nb_incoming_packets = np.array([arr for i,arr in enumerate(nb_incoming_packets) if i not in idx_to_remove])
-'''
 
 # At 3 indices, nb_outgoing_packets and nb_incoming_packets are 0 because of errors coming from the server
 # Compute other useful features
@@ -165,9 +118,6 @@ row_mean = np.nanmean(nb_in_fraction, axis=1)
 row_mean = np.array([float(round(v)) for v in row_mean])
 idxs = np.where(np.isnan(nb_in_fraction))
 nb_in_fraction[idxs] = np.take(row_mean, idxs[0])
-
-# nb_out_fraction = np.where(np.isnan(nb_out_fraction), np.nanmean(nb_out_fraction, axis=1), nb_out_fraction)
-# nb_in_fraction = np.where(np.isnan(nb_in_fraction), np.nanmean(nb_in_fraction, axis=1), nb_in_fraction)
 
 # Save in numpy format
 np.save('nb_out_packets.npy', np.asarray(nb_outgoing_packets))
